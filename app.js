@@ -24,6 +24,11 @@ const swaggerOptions = {
         url: 'http://localhost:3000',
         description: '🌐 Development server',
       },
+
+      {
+        url: 'https://d3s-backend.onrender.com',
+        description: '🌐 Testing server',
+      },
     ],
     components: {
       securitySchemes: {

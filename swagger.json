@@ -1,0 +1,14 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "title": "D3S API",
+      "version": "1.0.0",
+      "description": "Hospital-Doctor-Patient Management System"
+    },
+    "servers": [
+      {
+        "url": "http://localhost:3000",
+        "description": "Development server"
+      }
+    ]
+  }

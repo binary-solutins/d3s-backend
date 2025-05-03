@@ -1,8 +1,11 @@
 // 🚀 Import Dependencies
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
 const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerUI = require('swagger-ui-express');
+
 require('dotenv').config();
 
 const app = express();
@@ -47,19 +50,21 @@ const swaggerSpec = swaggerJSDoc(swaggerOptions);
 
 // 🌐 Middlewares
 app.use(cors());
+app.use(helmet());
+app.use(morgan('dev'));
 app.use(express.json());
-
+app.use(express.urlencoded({ extended: true }));
 // 🛣️ API Routes
 app.use('/api/hospitals', require('./routes/hospital.route'));
 app.use('/api/doctors', require('./routes/doctor.route'));
 app.use('/api/patients', require('./routes/patient.route'));
 app.use('/api', require('./routes/location.route'));
-
+app.use('/api/reports', require('./routes/report.route'));
 // 📚 Swagger UI
 app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
 // 🧩 Database Sync
-db.sequelize.sync({ alter: true })
+db.sequelize.sync({ alter: false })
   .then(() => {
     console.log('✅ Database synced successfully');
   })

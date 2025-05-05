@@ -60,6 +60,7 @@ app.use('/api/doctors', require('./routes/doctor.route'));
 app.use('/api/patients', require('./routes/patient.route'));
 app.use('/api', require('./routes/location.route'));
 app.use('/api/reports', require('./routes/report.route'));
+app.use('/api/admin', require('./routes/admin.route'));
 // 📚 Swagger UI
 app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 

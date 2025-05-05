@@ -5,7 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerUI = require('swagger-ui-express');
-
+require('./services/cron');
 require('dotenv').config();
 
 const app = express();

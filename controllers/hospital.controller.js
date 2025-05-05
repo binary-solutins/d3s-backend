@@ -99,8 +99,14 @@ exports.login = async (req, res) => {
     }
 
     if (!hospital.isVerified) {
-      return res.status(401).json({ error: '❌ Email not verified' });
+      return res.status(401).json({ error: '❌ Email not verified by the admin.' });
     }
+
+    if (hospital.plan_time && new Date() > hospital.plan_time) {
+      await hospital.update({ isVerified: false });
+      return res.status(401).json({ error: '❌ Subscription expired' });
+    }
+
 
     const token = jwt.sign({ id: hospital.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     res.json({ 

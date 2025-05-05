@@ -3,9 +3,12 @@ const path = require('path');
 const db = require('../models');
 const Report = db.Report;
 const Patient = db.Patient;
-const { uploadReportFile, deleteReportFile } = require('../utils/reportUtils');
+const Doctor = db.Doctor;
+const { uploadReportFile, deleteReportFile, generateBreastCancerReport } = require('../utils/reportUtils');
 const { Op } = require('sequelize');
 const https = require('https');
+const fs = require('fs');
+const PDFDocument = require('pdfkit');
 
 // Configure multer for memory storage (needed for GCS upload)
 const storage = multer.memoryStorage();
@@ -25,11 +28,20 @@ const upload = multer({
     }
     cb(new Error('Only document and image files are allowed!'));
   }
-}).single('reportFile');
+});
 
-// Middleware for handling file upload
-exports.uploadReportFileMiddleware = (req, res, next) => {
-  upload(req, res, (err) => {
+// Updated middleware for handling multiple file uploads (for breast cancer reports)
+exports.uploadBreastCancerImagesMiddleware = (req, res, next) => {
+  const breastImagesUpload = upload.fields([
+    { name: 'leftTopImage', maxCount: 1 },
+    { name: 'leftCenterImage', maxCount: 1 },
+    { name: 'leftBottomImage', maxCount: 1 },
+    { name: 'rightTopImage', maxCount: 1 },
+    { name: 'rightCenterImage', maxCount: 1 },
+    { name: 'rightBottomImage', maxCount: 1 }
+  ]);
+
+  breastImagesUpload(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       return res.status(400).json({ error: `Upload error: ${err.message}` });
     } else if (err) {
@@ -39,65 +51,212 @@ exports.uploadReportFileMiddleware = (req, res, next) => {
   });
 };
 
+// Middleware for handling single file upload
+exports.uploadReportFileMiddleware = (req, res, next) => {
+  const singleFileUpload = upload.single('reportFile');
+  
+  singleFileUpload(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
+    } else if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    next();
+  });
+};
+
+// Create a breast cancer report with 6 images
+exports.createBreastCancerReport = async (req, res) => {
+  try {
+    const { patientId, doctorId, hospitalId, title, description } = req.body;
+    
+    // Validate inputs
+    if (!patientId || !doctorId || !hospitalId) {
+      return res.status(400).json({ error: '❌ Patient ID, Doctor ID, and Hospital ID are required' });
+    }
+
+    // Check if all 6 required images are uploaded
+    const requiredImageFields = [
+      'leftTopImage', 'leftCenterImage', 'leftBottomImage',
+      'rightTopImage', 'rightCenterImage', 'rightBottomImage'
+    ];
+    
+    const missingImages = requiredImageFields.filter(field => !req.files || !req.files[field]);
+    
+    if (missingImages.length > 0) {
+      return res.status(400).json({ 
+        error: `❌ Missing required breast images: ${missingImages.join(', ')}` 
+      });
+    }
+
+    // Validate patient exists and belongs to this hospital
+    const patient = await Patient.findOne({ 
+      where: { 
+        id: patientId,
+        hospitalId
+      }
+    });
+    
+    if (!patient) {
+      return res.status(404).json({ error: '❌ Patient not found or not associated with this hospital' });
+    }
+
+    // Validate doctor exists
+    const doctor = await Doctor.findOne({
+      where: {
+        id: doctorId,
+        hospitalId
+      }
+    });
+
+    if (!doctor) {
+      return res.status(404).json({ error: '❌ Doctor not found or not associated with this hospital' });
+    }
+
+    // Upload all images to Google Cloud Storage
+    const uploadPromises = [];
+    
+    for (const fieldName of requiredImageFields) {
+      uploadPromises.push(
+        uploadReportFile(req.files[fieldName][0], patientId, fieldName)
+      );
+    }
+
+    const uploadedImages = await Promise.all(uploadPromises);
+    
+    // Generate PDF report from the uploaded images
+    const pdfReportData = await generateBreastCancerReport(
+      uploadedImages, 
+      patient, 
+      doctor, 
+      title || 'Breast Cancer Screening Report'
+    );
+
+    // Upload the generated PDF to Google Cloud Storage
+    const pdfFile = {
+      buffer: pdfReportData,
+      mimetype: 'application/pdf',
+      originalname: `${patient.lastName}_${patient.firstName}_Breast_Cancer_Report.pdf`,
+      size: pdfReportData.length // Add file size to fix the notNull violation
+    };
+    
+    const pdfUploadData = await uploadReportFile(pdfFile, patientId, 'generated_pdf_report');
+
+    // Create report record in database
+    const report = await Report.create({
+      title: title || 'Breast Cancer Screening Report',
+      description: description || 'Breast cancer screening report with 6 images',
+      reportType: 'Other', // Fixed: shortened to avoid data truncation error
+      patientId,
+      doctorId,
+      hospitalId,
+      uploadedBy: req.userId || hospitalId,
+      fileUrl: pdfUploadData.fileUrl,
+      fileName: pdfUploadData.fileName,
+      fileType: pdfUploadData.fileType,
+      fileSize: pdfUploadData.fileSize || pdfReportData.length, // Ensure fileSize is not null
+      metadata: {
+        images: uploadedImages.map(img => ({
+          position: img.fieldName,
+          fileUrl: img.fileUrl
+        })),
+        generatedAt: new Date().toISOString(),
+        generatedBy: doctorId
+      }
+    });
+    
+    res.status(201).json({
+      message: '✅ Breast cancer report generated and uploaded successfully',
+      report: {
+        id: report.id,
+        title: report.title,
+        reportType: report.reportType,
+        patientId: report.patientId,
+        doctorId: report.doctorId,
+        fileName: report.fileName,
+        fileUrl: report.fileUrl,
+        uploadedAt: report.uploadedAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Create a new report
 exports.createReport = async (req, res) => {
-    try {
-      let { patientId, title, description, reportType, hospitalId } = req.body;
+  try {
+    let { patientId, doctorId, title, description, reportType, hospitalId } = req.body;
 
-      //If hospitalId or patientId is not in the body, try to get it from the request
-      hospitalId = hospitalId || req.hospitalId;
-      patientId = patientId || req.patientId;
-     
-      
-      // Validate patient exists and belongs to this hospital
-      const patient = await Patient.findOne({ 
-        where: { 
-          id: patientId,
+    // If hospitalId or patientId is not in the body, try to get it from the request
+    hospitalId = hospitalId || req.hospitalId;
+    patientId = patientId || req.patientId;
+    
+    // Validate patient exists and belongs to this hospital
+    const patient = await Patient.findOne({ 
+      where: { 
+        id: patientId,
+        hospitalId
+      }
+    });
+    
+    if (!patient) {
+      return res.status(404).json({ error: '❌ Patient not found or not associated with this hospital' });
+    }
+
+    // Validate doctor exists if provided
+    if (doctorId) {
+      const doctor = await Doctor.findOne({
+        where: {
+          id: doctorId,
           hospitalId
         }
       });
-      
-      if (!patient) {
-        return res.status(404).json({ error: '❌ Patient not found or not associated with this hospital' });
+
+      if (!doctor) {
+        return res.status(404).json({ error: '❌ Doctor not found or not associated with this hospital' });
       }
-      
-      // Check if file was uploaded
-      if (!req.file) {
-        return res.status(400).json({ error: '❌ No report file uploaded' });
-      }
-      
-      // Upload file to Google Cloud Storage
-      const fileData = await uploadReportFile(req.file, patientId);
-      
-      // Create report record in database
-      const report = await Report.create({
-        title,
-        description,
-        reportType,
-        patientId,
-        hospitalId,
-        uploadedBy: req.userId || hospitalId, // Depends on your auth system
-        fileUrl: fileData.fileUrl,
-        fileName: fileData.fileName,
-        fileType: fileData.fileType,
-        fileSize: fileData.fileSize
-      });
-      
-      res.status(201).json({
-        message: '✅ Report uploaded successfully',
-        report: {
-          id: report.id,
-          title: report.title,
-          reportType: report.reportType,
-          patientId: report.patientId,
-          fileName: report.fileName,
-          uploadedAt: report.uploadedAt
-        }
-      });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
     }
-  };
+    
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ error: '❌ No report file uploaded' });
+    }
+    
+    // Upload file to Google Cloud Storage
+    const fileData = await uploadReportFile(req.file, patientId, 'general_report');
+    
+    // Create report record in database
+    const report = await Report.create({
+      title,
+      description,
+      reportType: 'Brease Cancer Report',
+      patientId,
+      doctorId,
+      hospitalId,
+      uploadedBy: req.userId || hospitalId,
+      fileUrl: fileData.fileUrl,
+      fileName: fileData.fileName,
+      fileType: fileData.fileType,
+      fileSize: fileData.fileSize
+    });
+    
+    res.status(201).json({
+      message: '✅ Report uploaded successfully',
+      report: {
+        id: report.id,
+        title: report.title,
+        reportType: report.reportType,
+        patientId: report.patientId,
+        doctorId: report.doctorId,
+        fileName: report.fileName,
+        uploadedAt: report.uploadedAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 // Get all reports for a patient
 exports.getPatientReports = async (req, res) => {
@@ -129,7 +288,7 @@ exports.getPatientReports = async (req, res) => {
       attributes: [
         'id', 'title', 'description', 'reportType', 
         'fileName', 'fileType', 'fileSize', 'fileUrl',
-        'uploadedAt', 'uploadedBy'
+        'uploadedAt', 'uploadedBy', 'doctorId', 'metadata'
       ],
       order: [['uploadedAt', 'DESC']]
     });
@@ -161,6 +320,11 @@ exports.getReportById = async (req, res) => {
           model: Patient,
           as: 'patient',
           attributes: ['id', 'firstName', 'lastName', 'gender', 'age']
+        },
+        {
+          model: Doctor,
+          as: 'doctor',
+          attributes: ['id', 'firstName', 'lastName', 'specialization']
         }
       ]
     });
@@ -209,7 +373,7 @@ exports.downloadReport = async (req, res) => {
 exports.updateReport = async (req, res) => {
   try {
     const { reportId } = req.params;
-    const { title, description, reportType } = req.body;
+    const { title, description, reportType, doctorId } = req.body;
     let hospitalId = req.hospitalId; // From auth middleware
     hospitalId = hospitalId || req.body.hospitalId;
     
@@ -224,11 +388,26 @@ exports.updateReport = async (req, res) => {
     if (!report) {
       return res.status(404).json({ error: '❌ Report not found' });
     }
+
+    // If doctorId is provided, validate doctor exists
+    if (doctorId) {
+      const doctor = await Doctor.findOne({
+        where: {
+          id: doctorId,
+          hospitalId
+        }
+      });
+
+      if (!doctor) {
+        return res.status(404).json({ error: '❌ Doctor not found or not associated with this hospital' });
+      }
+    }
     
     await report.update({
       title: title || report.title,
       description: description || report.description,
-      reportType: reportType || report.reportType
+      reportType: reportType || report.reportType,
+      doctorId: doctorId || report.doctorId
     });
     
     res.status(200).json({
@@ -237,7 +416,8 @@ exports.updateReport = async (req, res) => {
         id: report.id,
         title: report.title,
         description: report.description,
-        reportType: report.reportType
+        reportType: report.reportType,
+        doctorId: report.doctorId
       }
     });
   } catch (error) {
@@ -290,6 +470,14 @@ exports.permanentDeleteReport = async (req, res) => {
     // Delete file from Google Cloud Storage
     await deleteReportFile(report.fileUrl);
     
+    // If this is a breast cancer report, also delete the source images
+    if (report.reportType === 'Breast Cancer' && report.metadata && report.metadata.images) {
+      const imageDeletePromises = report.metadata.images.map(image => 
+        deleteReportFile(image.fileUrl)
+      );
+      await Promise.all(imageDeletePromises);
+    }
+    
     // Delete record from database
     await report.destroy();
     
@@ -302,7 +490,7 @@ exports.permanentDeleteReport = async (req, res) => {
 // Search reports
 exports.searchReports = async (req, res) => {
   try {
-    const { patientId, reportType, startDate, endDate, query } = req.query;
+    const { patientId, doctorId, reportType, startDate, endDate, query } = req.query;
     let hospitalId = req.hospitalId; // From auth middleware
     hospitalId = hospitalId || req.body.hospitalId;
     
@@ -313,6 +501,7 @@ exports.searchReports = async (req, res) => {
     
     // Add filters to the where clause
     if (patientId) whereClause.patientId = patientId;
+    if (doctorId) whereClause.doctorId = doctorId;
     if (reportType) whereClause.reportType = reportType;
     
     // Date range filter
@@ -338,6 +527,11 @@ exports.searchReports = async (req, res) => {
           model: Patient,
           as: 'patient',
           attributes: ['id', 'firstName', 'lastName']
+        },
+        {
+          model: Doctor,
+          as: 'doctor',
+          attributes: ['id', 'firstName', 'lastName', 'specialization']
         }
       ],
       order: [['uploadedAt', 'DESC']]

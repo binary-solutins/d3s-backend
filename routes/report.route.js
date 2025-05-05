@@ -31,12 +31,15 @@ const reportController = require('../controllers/report.controller');
  *               - title
  *               - reportType
  *               - reportFile
- *               - hospitalId
  *             properties:
  *               patientId:
  *                 type: integer
  *                 description: ID of the patient
  *                 example: 1
+ *               doctorId:
+ *                 type: integer
+ *                 description: ID of the doctor associated with the report
+ *                 example: 5
  *               title:
  *                 type: string
  *                 description: Title of the report
@@ -47,7 +50,7 @@ const reportController = require('../controllers/report.controller');
  *                 example: "Complete blood count and metabolic panel"
  *               reportType:
  *                 type: string
- *                 enum: [Laboratory, Radiology, Surgical, Pathology, Other]
+ *                 description: Type of medical report
  *                 example: "Laboratory"
  *               reportFile:
  *                 type: string
@@ -67,6 +70,7 @@ const reportController = require('../controllers/report.controller');
  *               properties:
  *                 message:
  *                   type: string
+ *                   example: "✅ Report uploaded successfully"
  *                 report:
  *                   type: object
  *                   properties:
@@ -78,6 +82,8 @@ const reportController = require('../controllers/report.controller');
  *                       type: string
  *                     patientId:
  *                       type: integer
+ *                     doctorId:
+ *                       type: integer
  *                     fileName:
  *                       type: string
  *                     uploadedAt:
@@ -85,12 +91,152 @@ const reportController = require('../controllers/report.controller');
  *                       format: date-time
  *       400:
  *         description: Invalid input or no file uploaded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ No report file uploaded"
  *       404:
- *         description: Patient not found
+ *         description: Patient or doctor not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ Patient not found or not associated with this hospital"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+router.post('/', reportController.uploadReportFileMiddleware, reportController.createReport);
+
+/**
+ * @swagger
+ * /api/reports/breast-cancer:
+ *   post:
+ *     summary: Create a breast cancer report with 6 images
+ *     tags: [Patient Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     consumes:
+ *       - multipart/form-data
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - patientId
+ *               - doctorId
+ *               - hospitalId
+ *               - leftTopImage
+ *               - leftCenterImage
+ *               - leftBottomImage
+ *               - rightTopImage
+ *               - rightCenterImage
+ *               - rightBottomImage
+ *             properties:
+ *               patientId:
+ *                 type: integer
+ *                 description: ID of the patient
+ *                 example: 1
+ *               doctorId:
+ *                 type: integer
+ *                 description: ID of the doctor
+ *                 example: 5
+ *               hospitalId:
+ *                 type: integer
+ *                 description: ID of the hospital
+ *                 example: 123
+ *               title:
+ *                 type: string
+ *                 description: Title of the report
+ *                 example: "Breast Cancer Screening Report"
+ *               description:
+ *                 type: string
+ *                 description: Description of the report
+ *                 example: "Breast cancer screening with 6 images"
+ *               leftTopImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: Left breast top view image
+ *               leftCenterImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: Left breast center view image
+ *               leftBottomImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: Left breast bottom view image
+ *               rightTopImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: Right breast top view image
+ *               rightCenterImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: Right breast center view image
+ *               rightBottomImage:
+ *                 type: string
+ *                 format: binary
+ *                 description: Right breast bottom view image
+ *     responses:
+ *       201:
+ *         description: Breast cancer report generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "✅ Breast cancer report generated and uploaded successfully"
+ *                 report:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     reportType:
+ *                       type: string
+ *                     patientId:
+ *                       type: integer
+ *                     doctorId:
+ *                       type: integer
+ *                     fileName:
+ *                       type: string
+ *                     uploadedAt:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Missing required fields or images
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ Missing required breast images: leftTopImage, rightTopImage"
+ *       404:
+ *         description: Patient or doctor not found
  *       500:
  *         description: Server error
  */
-router.post('/', reportController.uploadReportFileMiddleware, reportController.createReport);
+router.post('/breast-cancer', reportController.uploadBreastCancerImagesMiddleware, reportController.createBreastCancerReport);
 
 /**
  * @swagger
@@ -107,21 +253,6 @@ router.post('/', reportController.uploadReportFileMiddleware, reportController.c
  *         schema:
  *           type: integer
  *         description: ID of the patient
- *     requestBody:
- *       required: true,
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               hospitalId:
- *                 type: integer
- *                 description: ID of the hospital
- *                 example: 123
- *               patientId:
- *                 type: integer
- *                 description: ID of the patient
- *                 example: 1
  *     responses:
  *       200:
  *         description: List of patient reports
@@ -163,8 +294,22 @@ router.post('/', reportController.uploadReportFileMiddleware, reportController.c
  *                       uploadedAt:
  *                         type: string
  *                         format: date-time
+ *                       uploadedBy:
+ *                         type: integer
+ *                       doctorId:
+ *                         type: integer
+ *                       metadata:
+ *                         type: object
  *       404:
  *         description: Patient not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ Patient not found or not associated with this hospital"
  *       500:
  *         description: Server error
  */
@@ -188,8 +333,67 @@ router.get('/patient/:patientId', reportController.getPatientReports);
  *     responses:
  *       200:
  *         description: Report details with patient information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 report:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     reportType:
+ *                       type: string
+ *                     fileUrl:
+ *                       type: string
+ *                     fileName:
+ *                       type: string
+ *                     fileType:
+ *                       type: string
+ *                     fileSize:
+ *                       type: integer
+ *                     uploadedAt:
+ *                       type: string
+ *                       format: date-time
+ *                     patient:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         firstName:
+ *                           type: string
+ *                         lastName:
+ *                           type: string
+ *                         gender:
+ *                           type: string
+ *                         age:
+ *                           type: integer
+ *                     doctor:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         firstName:
+ *                           type: string
+ *                         lastName:
+ *                           type: string
+ *                         specialization:
+ *                           type: string
  *       404:
  *         description: Report not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ Report not found"
  *       500:
  *         description: Server error
  */
@@ -220,8 +424,24 @@ router.get('/:reportId', reportController.getReportById);
  *               format: binary
  *       404:
  *         description: Report not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ Report not found"
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ Error downloading file"
  */
 router.get('/:reportId/download', reportController.downloadReport);
 
@@ -255,13 +475,47 @@ router.get('/:reportId/download', reportController.downloadReport);
  *                 example: "Updated description of test results"
  *               reportType:
  *                 type: string
- *                 enum: [Laboratory, Radiology, Surgical, Pathology, Other]
  *                 example: "Laboratory"
+ *               doctorId:
+ *                 type: integer
+ *                 example: 5
+ *               hospitalId:
+ *                 type: integer
+ *                 example: 123
  *     responses:
  *       200:
  *         description: Report details updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "✅ Report details updated successfully"
+ *                 report:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     reportType:
+ *                       type: string
+ *                     doctorId:
+ *                       type: integer
  *       404:
- *         description: Report not found
+ *         description: Report or doctor not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ Report not found"
  *       500:
  *         description: Server error
  */
@@ -285,8 +539,24 @@ router.put('/:reportId', reportController.updateReport);
  *     responses:
  *       200:
  *         description: Report deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "✅ Report deleted successfully"
  *       404:
  *         description: Report not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ Report not found"
  *       500:
  *         description: Server error
  */
@@ -307,11 +577,37 @@ router.delete('/:reportId', reportController.deleteReport);
  *         schema:
  *           type: integer
  *         description: ID of the report to permanently delete
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               hospitalId:
+ *                 type: integer
+ *                 description: ID of the hospital
+ *                 example: 123
  *     responses:
  *       200:
  *         description: Report permanently deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "✅ Report permanently deleted"
  *       404:
  *         description: Report not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ Report not found"
  *       500:
  *         description: Server error
  */
@@ -332,10 +628,14 @@ router.delete('/:reportId/permanent', reportController.permanentDeleteReport);
  *           type: integer
  *         description: ID of the patient
  *       - in: query
+ *         name: doctorId
+ *         schema:
+ *           type: integer
+ *         description: ID of the doctor
+ *       - in: query
  *         name: reportType
  *         schema:
  *           type: string
- *           enum: [Laboratory, Radiology, Surgical, Pathology, Other]
  *         description: Type of report
  *       - in: query
  *         name: startDate
@@ -353,10 +653,57 @@ router.delete('/:reportId/permanent', reportController.permanentDeleteReport);
  *         name: query
  *         schema:
  *           type: string
- *         description: Search term for report title or description
+ *         description: Search term for report title, description or filename
  *     responses:
  *       200:
  *         description: List of reports matching search criteria
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 count:
+ *                   type: integer
+ *                 reports:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       title:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       reportType:
+ *                         type: string
+ *                       fileUrl:
+ *                         type: string
+ *                       fileName:
+ *                         type: string
+ *                       uploadedAt:
+ *                         type: string
+ *                         format: date-time
+ *                       patient:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           firstName:
+ *                             type: string
+ *                           lastName:
+ *                             type: string
+ *                       doctor:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           firstName:
+ *                             type: string
+ *                           lastName:
+ *                             type: string
+ *                           specialization:
+ *                             type: string
  *       500:
  *         description: Server error
  */

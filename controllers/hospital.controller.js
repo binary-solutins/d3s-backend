@@ -5,12 +5,13 @@ const Hospital = db.Hospital;
 const sendEmail = require('../utils/emainSender');
 const multer = require('multer');
 const path = require('path');
-const { uploadImage } = require('../utils/googleCloud');
+const axios = require('axios');
+const FormData = require('form-data');
+const { v4: uuidv4 } = require('uuid');
 
-// Configure multer for memory storage (needed for GCS upload)
-const storage = multer.memoryStorage();
+// Configure multer for memory storage
 const upload = multer({
-  storage: storage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024, // limit to 5MB
   },
@@ -27,7 +28,7 @@ const upload = multer({
 }).single('image');
 
 // Middleware for handling file upload
-exports.uploadHospitalImage = (req, res, next) => {
+exports.handleFileUpload = (req, res, next) => {
   upload(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       return res.status(400).json({ error: `Multer error: ${err.message}` });
@@ -38,10 +39,61 @@ exports.uploadHospitalImage = (req, res, next) => {
   });
 };
 
+// Helper function to upload image to Appwrite
+const uploadToAppwrite = async (file) => {
+  try {
+    // Debug log to check file properties
+    console.log('File to upload:', {
+      name: file.originalname,
+      size: file.size,
+      mimeType: file.mimetype,
+      hasBuffer: !!file.buffer,
+      bufferLength: file.buffer ? file.buffer.length : 0
+    });
+    
+    // Check if buffer exists and has content
+    if (!file.buffer || file.buffer.length === 0) {
+      throw new Error('File buffer is empty or missing');
+    }
+
+    const form = new FormData();
+    const fileId = uuidv4();
+
+    form.append('fileId', fileId);
+    form.append('file', file.buffer, {
+      filename: file.originalname,
+      contentType: file.mimetype,
+    });
+
+    const BUCKET_ID = process.env.APPWRITE_BUCKET_ID;
+    const PROJECT_ID = process.env.APPWRITE_PROJECT_ID;
+    const API_KEY = process.env.APPWRITE_API_KEY;
+
+    const response = await axios.post(
+      `https://cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files`,
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          'X-Appwrite-Project': PROJECT_ID,
+          'X-Appwrite-Key': API_KEY,
+        },
+      }
+    );
+
+    const uploadedFileId = response.data.$id;
+    const fileUrl = `https://cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files/${uploadedFileId}/view?project=${PROJECT_ID}`;
+    return fileUrl;
+  } catch (error) {
+    console.error('Appwrite upload error:', error);
+    throw new Error(`Failed to upload image to Appwrite: ${error.message}`);
+  }
+};
+
 // 🏥 Signup Hospital
 exports.signup = async (req, res) => {
   try {
-    const { name, email, password,phone } = req.body;
+    const { name, email, password, phone } = req.body;
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -49,8 +101,8 @@ exports.signup = async (req, res) => {
     let imageUrl = null;
     // Check if file was uploaded
     if (req.file) {
-      // Upload to Google Cloud Storage
-      imageUrl = await uploadImage(req.file);
+      // Upload to Appwrite
+      imageUrl = await uploadToAppwrite(req.file);
     }
 
     const hospital = await Hospital.create({
@@ -68,6 +120,7 @@ exports.signup = async (req, res) => {
       hospitalId: hospital.id
     });
   } catch (error) {
+    console.error('Signup error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -84,6 +137,7 @@ exports.verifyOtp = async (req, res) => {
     await hospital.update({ isVerified: true, otp: null });
     res.status(200).json({ message: '✅ Email verified successfully' });
   } catch (error) {
+    console.error('OTP verification error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -121,6 +175,7 @@ exports.login = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -128,6 +183,16 @@ exports.login = async (req, res) => {
 // 🔄 Update Hospital Details
 exports.updateHospital = async (req, res) => {
   try {
+    console.log('Update hospital request received', { 
+      body: req.body,
+      file: req.file ? true : false,
+      fileInfo: req.file ? {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      } : null
+    });
+    
     const hospitalId = req.params.id || req.hospitalId; // Get from params or auth middleware
     const { name, email, phone, country, state, city, address } = req.body;
     
@@ -140,8 +205,18 @@ exports.updateHospital = async (req, res) => {
     let imageUrl = hospital.imageUrl;
     // Check if file was uploaded
     if (req.file) {
-      // Upload to Google Cloud Storage
-      imageUrl = await uploadImage(req.file);
+      try {
+        // Upload to Appwrite
+        imageUrl = await uploadToAppwrite(req.file);
+        console.log('Image uploaded successfully', { imageUrl });
+      } catch (uploadError) {
+        console.error('Image upload failed:', uploadError);
+        // Continue with update without changing the image
+        return res.status(400).json({ 
+          error: 'Image upload failed. Please try again with a different image.',
+          details: uploadError.message
+        });
+      }
     }
     
     await hospital.update({
@@ -170,6 +245,7 @@ exports.updateHospital = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Update hospital error:', error);
     res.status(500).json({ error: error.message });
   }
 };

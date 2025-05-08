@@ -51,7 +51,7 @@ const hospitalController = require('../controllers/hospital.controller');
  *       500:
  *         description: Server error
  */
-router.post('/signup', hospitalController.uploadHospitalImage, hospitalController.signup);
+router.post('/signup', hospitalController.handleFileUpload, hospitalController.signup);
 
 /**
  * @swagger
@@ -221,6 +221,6 @@ router.post('/login', hospitalController.login);
  *       500:
  *         description: Server error
  */
-router.put('/:id', hospitalController.uploadHospitalImage, hospitalController.updateHospital);
+router.put('/:id', hospitalController.handleFileUpload, hospitalController.updateHospital);
 
 module.exports = router;

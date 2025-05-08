@@ -4,13 +4,17 @@ const db = require('../models');
 const Report = db.Report;
 const Patient = db.Patient;
 const Doctor = db.Doctor;
-const { uploadReportFile, deleteReportFile, generateBreastCancerReport } = require('../utils/reportUtils');
+const Hospital= db.Hospital
+const { generateBreastCancerReport } = require('../utils/reportUtils');
 const { Op } = require('sequelize');
 const https = require('https');
 const fs = require('fs');
 const PDFDocument = require('pdfkit');
+const axios = require('axios');
+const FormData = require('form-data');
+const { v4: uuidv4 } = require('uuid');
 
-// Configure multer for memory storage (needed for GCS upload)
+// Configure multer for memory storage
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -29,6 +33,84 @@ const upload = multer({
     cb(new Error('Only document and image files are allowed!'));
   }
 });
+
+// Helper function to upload file to Appwrite
+const uploadToAppwrite = async (file, patientId, fileType) => {
+  try {
+    // Check if buffer exists and has content
+    if (!file.buffer || file.buffer.length === 0) {
+      throw new Error('File buffer is empty or missing');
+    }
+
+    const form = new FormData();
+    const fileId = uuidv4();
+
+    form.append('fileId', fileId);
+    form.append('file', file.buffer, {
+      filename: file.originalname,
+      contentType: file.mimetype,
+    });
+
+    const BUCKET_ID = process.env.APPWRITE_BUCKET_ID;
+    const PROJECT_ID = process.env.APPWRITE_PROJECT_ID;
+    const API_KEY = process.env.APPWRITE_API_KEY;
+
+    const response = await axios.post(
+      `https://cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files`,
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          'X-Appwrite-Project': PROJECT_ID,
+          'X-Appwrite-Key': API_KEY,
+        },
+      }
+    );
+
+    // Construct the file URL
+    const fileUrl = `https://cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files/${fileId}/view?project=${PROJECT_ID}`;
+
+    return {
+      fileId: fileId,
+      fileName: file.originalname,
+      fileType: file.mimetype,
+      fileSize: file.size,
+      fileUrl: fileUrl,
+      fieldName: fileType
+    };
+  } catch (error) {
+    console.error('Appwrite upload error:', error);
+    throw new Error(`Failed to upload file to Appwrite: ${error.message}`);
+  }
+};
+
+// Helper function to delete file from Appwrite
+const deleteFromAppwrite = async (fileUrl) => {
+  try {
+    // Extract fileId from URL
+    const urlParts = fileUrl.split('/');
+    const fileId = urlParts[urlParts.length - 2];
+    
+    const BUCKET_ID = process.env.APPWRITE_BUCKET_ID;
+    const PROJECT_ID = process.env.APPWRITE_PROJECT_ID;
+    const API_KEY = process.env.APPWRITE_API_KEY;
+
+    await axios.delete(
+      `https://cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files/${fileId}`,
+      {
+        headers: {
+          'X-Appwrite-Project': PROJECT_ID,
+          'X-Appwrite-Key': API_KEY,
+        },
+      }
+    );
+
+    return true;
+  } catch (error) {
+    console.error('Appwrite delete error:', error);
+    throw new Error(`Failed to delete file from Appwrite: ${error.message}`);
+  }
+};
 
 // Updated middleware for handling multiple file uploads (for breast cancer reports)
 exports.uploadBreastCancerImagesMiddleware = (req, res, next) => {
@@ -109,16 +191,22 @@ exports.createBreastCancerReport = async (req, res) => {
       }
     });
 
+    const hospital = await Hospital.findOne({
+      where: {
+        id: hospitalId,
+      }
+    });
+
     if (!doctor) {
       return res.status(404).json({ error: '❌ Doctor not found or not associated with this hospital' });
     }
 
-    // Upload all images to Google Cloud Storage
+    // Upload all images to Appwrite
     const uploadPromises = [];
     
     for (const fieldName of requiredImageFields) {
       uploadPromises.push(
-        uploadReportFile(req.files[fieldName][0], patientId, fieldName)
+        uploadToAppwrite(req.files[fieldName][0], patientId, fieldName)
       );
     }
 
@@ -129,18 +217,19 @@ exports.createBreastCancerReport = async (req, res) => {
       uploadedImages, 
       patient, 
       doctor, 
+      hospital,
       title || 'Breast Cancer Screening Report'
     );
 
-    // Upload the generated PDF to Google Cloud Storage
+    // Upload the generated PDF to Appwrite
     const pdfFile = {
       buffer: pdfReportData,
       mimetype: 'application/pdf',
       originalname: `${patient.lastName}_${patient.firstName}_Breast_Cancer_Report.pdf`,
-      size: pdfReportData.length // Add file size to fix the notNull violation
+      size: pdfReportData.length
     };
     
-    const pdfUploadData = await uploadReportFile(pdfFile, patientId, 'generated_pdf_report');
+    const pdfUploadData = await uploadToAppwrite(pdfFile, patientId, 'generated_pdf_report');
 
     // Create report record in database
     const report = await Report.create({
@@ -223,8 +312,8 @@ exports.createReport = async (req, res) => {
       return res.status(400).json({ error: '❌ No report file uploaded' });
     }
     
-    // Upload file to Google Cloud Storage
-    const fileData = await uploadReportFile(req.file, patientId, 'general_report');
+    // Upload file to Appwrite
+    const fileData = await uploadToAppwrite(req.file, patientId, 'general_report');
     
     // Create report record in database
     const report = await Report.create({
@@ -339,7 +428,7 @@ exports.getReportById = async (req, res) => {
   }
 };
 
-// Download a report (proxy the file from Google Cloud Storage)
+// Download a report (proxy the file from Appwrite)
 exports.downloadReport = async (req, res) => {
   try {
     const { reportId } = req.params;  
@@ -358,7 +447,7 @@ exports.downloadReport = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=${report.fileName}`);
     res.setHeader('Content-Type', report.fileType);
     
-    // Stream the file from GCS to the response
+    // Stream the file from Appwrite to the response
     https.get(report.fileUrl, (fileStream) => {
       fileStream.pipe(res);
     }).on('error', (err) => {
@@ -467,13 +556,13 @@ exports.permanentDeleteReport = async (req, res) => {
       return res.status(404).json({ error: '❌ Report not found' });
     }
     
-    // Delete file from Google Cloud Storage
-    await deleteReportFile(report.fileUrl);
+    // Delete file from Appwrite
+    await deleteFromAppwrite(report.fileUrl);
     
     // If this is a breast cancer report, also delete the source images
     if (report.reportType === 'Breast Cancer' && report.metadata && report.metadata.images) {
       const imageDeletePromises = report.metadata.images.map(image => 
-        deleteReportFile(image.fileUrl)
+        deleteFromAppwrite(image.fileUrl)
       );
       await Promise.all(imageDeletePromises);
     }

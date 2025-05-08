@@ -13,11 +13,13 @@
   "license": "ISC",
   "dependencies": {
     "@google-cloud/storage": "^7.16.0",
+    "appwrite": "^17.0.2",
     "axios": "^1.9.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
+    "form-data": "^4.0.2",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
@@ -30,6 +32,7 @@
     "sharp": "^0.34.1",
     "sqlite3": "^5.1.7",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^11.1.0"
   }
 }

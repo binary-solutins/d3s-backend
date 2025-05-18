@@ -148,6 +148,7 @@ exports.uploadReportFileMiddleware = (req, res, next) => {
 };
 
 // Create a breast cancer report with 6 images
+// Create a breast cancer report with 6 images
 exports.createBreastCancerReport = async (req, res) => {
   try {
     const { patientId, doctorId, hospitalId, title, description } = req.body;
@@ -191,14 +192,20 @@ exports.createBreastCancerReport = async (req, res) => {
       }
     });
 
+    // Get hospital data with imageUrl
     const hospital = await Hospital.findOne({
       where: {
         id: hospitalId,
-      }
+      },
+      attributes: ['id', 'name', 'address', 'imageUrl'] // Explicitly include imageUrl
     });
 
     if (!doctor) {
       return res.status(404).json({ error: '❌ Doctor not found or not associated with this hospital' });
+    }
+
+    if (!hospital) {
+      return res.status(404).json({ error: '❌ Hospital not found' });
     }
 
     // Upload all images to Appwrite
@@ -217,7 +224,7 @@ exports.createBreastCancerReport = async (req, res) => {
       uploadedImages, 
       patient, 
       doctor, 
-      hospital,
+      hospital, // Now includes the imageUrl property
       title || 'Breast Cancer Screening Report'
     );
 
@@ -235,7 +242,7 @@ exports.createBreastCancerReport = async (req, res) => {
     const report = await Report.create({
       title: title || 'Breast Cancer Screening Report',
       description: description || 'Breast cancer screening report with 6 images',
-      reportType: 'Other', // Fixed: shortened to avoid data truncation error
+      reportType: 'Other', // Fixed: proper report type
       patientId,
       doctorId,
       hospitalId,
@@ -259,7 +266,7 @@ exports.createBreastCancerReport = async (req, res) => {
       report: {
         id: report.id,
         title: report.title,
-        reportType: report.reportType,
+        reportType: 'Other',
         patientId: report.patientId,
         doctorId: report.doctorId,
         fileName: report.fileName,
@@ -268,6 +275,7 @@ exports.createBreastCancerReport = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error("Error in createBreastCancerReport:", error);
     res.status(500).json({ error: error.message });
   }
 };

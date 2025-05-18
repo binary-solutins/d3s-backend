@@ -4,6 +4,8 @@ const { format } = require('util');
 const PDFDocument = require('pdfkit');
 const axios = require('axios');
 const sharp = require('sharp');
+const fs = require('fs').promises;
+
 
 /**
  * Generate a professional breast cancer report from uploaded images
@@ -56,25 +58,34 @@ exports.generateBreastCancerReport = async (uploadedImages, patient, doctor, hos
     const pageWidth = doc.page.width - 2 * doc.page.margins.left;
     
     // Title header with logo
-    doc.image(await fetchLogo(), 25, 25, { width: 60 });
+    doc.image(await fetchLogo(), 50, 50, { width: 90 });
     
-    // Report title top-center
-    doc.fontSize(16)
-      .fillColor('#000')
-      .text("BR - Scan", 90, 30, { align: 'left' });
     
+    const poppinsFontPath = 'uploads/fonts/Poppins-Medium.ttf'; // Ensure the path is correct
+    doc.registerFont('Poppins', poppinsFontPath);
+
     doc.fontSize(14)
+      .font('Poppins') // Use the registered Poppins font
       .fillColor('#000')
-      .text(title.toUpperCase(), 210, 30, { align: 'left' });
-    
+      .text(title.toUpperCase(), 170, 45, { align: 'left' });
     // Add date with current timestamp
     const currentDate = new Date();
     const formattedDate = `${currentDate.getDate()} ${getMonthName(currentDate.getMonth())} ${currentDate.getFullYear()}, ${formatTime(currentDate)}`;
     doc.fontSize(10)
-      .text(`Date: ${formattedDate}`, 210, 50, { align: 'left' });
+      .text(`Date: ${formattedDate}`, 230, 65, { align: 'left' });
     
-    // Add hospital logo on right
-    doc.image(await fetchHospitalLogo(), doc.page.width - 85, 25, { width: 60 });
+    // Add hospital logo on right - use the hospital.imageUrl if available
+    const hospitalLogoOptions = {
+      width: 40,
+      align: 'right',
+      borderRadius: 20 // Add border radius for rounded corners
+    };
+    
+    // Shift the logo to the top-right corner with some spacing
+    const logoX = doc.page.width - hospitalLogoOptions.width - 40; // Adjust this value to move the logo left or right
+    const logoY = 35; // Adjust this value to move the logo up or down
+    
+    doc.image(await fetchHospitalLogo(hospital.imageUrl), logoX, logoY, hospitalLogoOptions);
     
     doc.moveTo(40, 80).lineTo(doc.page.width - 40, 80).stroke();
     
@@ -147,7 +158,7 @@ exports.generateBreastCancerReport = async (uploadedImages, patient, doctor, hos
       .text('Left Breast Screening Visuals', 190, leftBreastY + 5);
     
     // Image labels
-    const imageLabelsY = leftBreastY + 30;
+    const imageLabelsY = leftBreastY + 50;
     doc.fontSize(9)
       .fillColor('#000')
       .text('I. Top Side Image', 75, imageLabelsY)
@@ -182,7 +193,7 @@ exports.generateBreastCancerReport = async (uploadedImages, patient, doctor, hos
     // Add left breast images in a row
     const leftBreastImagesY = imageLabelsY + 15;
     const imageWidth = 130;
-    const imageGap = 20;
+    const imageGap = 55;
     
     // Add left breast images
     if (imageBuffers['leftTopImage']) {
@@ -214,7 +225,7 @@ exports.generateBreastCancerReport = async (uploadedImages, patient, doctor, hos
       .text('Right Breast Screening Visuals', 190, rightBreastY + 5);
     
     // Image labels
-    const rightImageLabelsY = rightBreastY + 30;
+    const rightImageLabelsY = rightBreastY + 50;
     doc.fontSize(9)
       .fillColor('#000')
       .text('I. Top Side Image', 75, rightImageLabelsY)
@@ -291,7 +302,6 @@ exports.generateBreastCancerReport = async (uploadedImages, patient, doctor, hos
     throw new Error(`Error generating breast cancer report: ${error.message}`);
   }
 };
-
 /**
  * Draw a breast icon with a circle and fill color
  * @param {PDFDocument} doc - PDFKit document
@@ -339,22 +349,22 @@ function formatTime(date) {
  * Fetch the BR-Scan logo
  * @returns {Promise<Buffer>} Logo buffer
  */
+
+
 async function fetchLogo() {
   try {
-    // This is a placeholder - in a real application, you would fetch the logo from a server or storage
-    // For now, we'll create a simple SVG logo
-    const svgLogo = `
-      <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100" height="100" fill="white"/>
-        <text x="15" y="40" font-family="Arial" font-size="20" fill="black">BR</text>
-        <text x="15" y="60" font-family="Arial" font-size="15" fill="#FF69B4">Scan</text>
-        <path d="M75,50 C75,35 60,20 45,20 C30,20 15,35 15,50" stroke="#FF69B4" stroke-width="2" fill="none"/>
-      </svg>
-    `;
-    
-    // Convert SVG to PNG
-    return await sharp(Buffer.from(svgLogo))
-      .resize(100, 100)
+    const logoPath = path.join(__dirname, '../uploads/logo.svg'); // Adjust the path as needed
+    const logoBuffer = await fs.readFile(logoPath);
+
+    // Process the image to ensure consistent size and format
+    return await sharp(logoBuffer)
+      .resize({
+        width: 150,
+        height: 50,
+        fit: 'contain',
+        background: { r: 255, g: 255, b: 255, alpha: 0 }
+      })
+      .png()
       .toBuffer();
   } catch (error) {
     console.error('Error fetching logo:', error);
@@ -364,29 +374,50 @@ async function fetchLogo() {
 }
 
 /**
- * Fetch the hospital logo
+ * Fetch the hospital logo from the provided URL
+ * @param {string} imageUrl - The URL of the hospital logo from database
  * @returns {Promise<Buffer>} Hospital logo buffer
  */
-async function fetchHospitalLogo() {
+async function fetchHospitalLogo(imageUrl) {
   try {
-    // This is a placeholder - in a real application, you would fetch the logo from a server or storage
-    const svgLogo = `
-      <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100" height="100" fill="#4CAF50"/>
-        <circle cx="50" cy="50" r="35" fill="white"/>
-        <text x="35" y="45" font-family="Arial" font-size="20" fill="#FF4500">GH</text>
-        <text x="25" y="65" font-family="Arial" font-size="10" fill="#FF4500">MEHSANA</text>
-      </svg>
-    `;
+    if (!imageUrl) {
+      console.warn('Hospital logo URL is missing, using placeholder');
+      // Fallback to a placeholder if URL is not provided
+      const svgLogo = `
+        <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100" height="100" fill="#4CAF50"/>
+          <circle cx="50" cy="50" r="35" fill="white"/>
+          <text x="35" y="45" font-family="Arial" font-size="20" fill="#FF4500">GH</text>
+          <text x="25" y="65" font-family="Arial" font-size="10" fill="#FF4500">MEHSANA</text>
+        </svg>
+      `;
+      
+      // Convert SVG to PNG
+      return await sharp(Buffer.from(svgLogo))
+        .resize(100, 100)
+        .toBuffer();
+    }
     
-    // Convert SVG to PNG
-    return await sharp(Buffer.from(svgLogo))
+    // Fetch the logo from the provided URL
+    const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+    
+    // Process the image to ensure consistent size and format
+    return await sharp(response.data)
       .resize(100, 100)
       .toBuffer();
   } catch (error) {
     console.error('Error fetching hospital logo:', error);
-    // Return an empty buffer if there's an error
-    return Buffer.from([]);
+    // Return a placeholder if there's an error
+    const placeholderSvg = `
+      <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100" height="100" fill="#f0f0f0"/>
+        <text x="20" y="55" font-family="Arial" font-size="15" fill="#888">Logo</text>
+      </svg>
+    `;
+    
+    return await sharp(Buffer.from(placeholderSvg))
+      .resize(100, 100)
+      .toBuffer();
   }
 }
 

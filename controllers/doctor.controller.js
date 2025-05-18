@@ -44,11 +44,8 @@ exports.getDoctorById = async (req, res) => {
     const { id } = req.params;
 
     const doctor = await Doctor.findByPk(id, {
-      include: [
-        { model: Hospital },
-        { model: Patient, as: 'Patients' }
-      ]
     });
+    
 
     if (!doctor) return res.status(404).json({ error: '❌ Doctor not found' });
 

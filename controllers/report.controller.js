@@ -359,16 +359,15 @@ exports.createReport = async (req, res) => {
 exports.getPatientReports = async (req, res) => {
   try {
     let { patientId } = req.params;
-    let hospitalId = req.hospitalId; // From auth middleware
+    
 
-    hospitalId = hospitalId || req.body.hospitalId;
+   
     patientId = patientId || req.body.patientId;
     
     // Validate patient exists and belongs to this hospital
     const patient = await Patient.findOne({ 
       where: { 
         id: patientId,
-        hospitalId
       }
     });
     
@@ -379,13 +378,12 @@ exports.getPatientReports = async (req, res) => {
     const reports = await Report.findAll({
       where: {
         patientId,
-        hospitalId,
         isDeleted: false
       },
       attributes: [
         'id', 'title', 'description', 'reportType', 
         'fileName', 'fileType', 'fileSize', 'fileUrl',
-        'uploadedAt', 'uploadedBy', 'doctorId', 'metadata'
+        'uploadedAt', 'uploadedBy'
       ],
       order: [['uploadedAt', 'DESC']]
     });

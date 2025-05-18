@@ -241,7 +241,7 @@ router.post('/breast-cancer', reportController.uploadBreastCancerImagesMiddlewar
 /**
  * @swagger
  * /api/reports/patient/{patientId}:
- *   get:
+ *   post:
  *     summary: Get all reports for a specific patient
  *     tags: [Patient Reports]
  *     security:
@@ -253,6 +253,16 @@ router.post('/breast-cancer', reportController.uploadBreastCancerImagesMiddlewar
  *         schema:
  *           type: integer
  *         description: ID of the patient
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               hospitalId:
+ *                 type: integer
+ *                 description: ID of the hospital
  *     responses:
  *       200:
  *         description: List of patient reports
@@ -313,7 +323,9 @@ router.post('/breast-cancer', reportController.uploadBreastCancerImagesMiddlewar
  *       500:
  *         description: Server error
  */
-router.get('/patient/:patientId', reportController.getPatientReports);
+
+router.post('/patient/:patientId', reportController.getPatientReports);
+
 
 /**
  * @swagger

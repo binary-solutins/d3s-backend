@@ -228,13 +228,23 @@ exports.createBreastCancerReport = async (req, res) => {
       title || 'Breast Cancer Screening Report'
     );
 
+    console.log("✅ Fetched Entities:", {
+      patient,
+      doctor,
+      hospital
+    });
+
+    const currentDate = new Date();
+const formattedDate = currentDate.toISOString().replace(/[:.]/g, '-');
     // Upload the generated PDF to Appwrite
     const pdfFile = {
       buffer: pdfReportData,
       mimetype: 'application/pdf',
-      originalname: `${patient.lastName}_${patient.firstName}_Breast_Cancer_Report.pdf`,
+      originalname: `${patient.lastName}_${patient.firstName}_${formattedDate}.pdf`,
       size: pdfReportData.length
     };
+
+
     
     const pdfUploadData = await uploadToAppwrite(pdfFile, patientId, 'generated_pdf_report');
 
@@ -296,6 +306,8 @@ exports.createReport = async (req, res) => {
         hospitalId
       }
     });
+
+    
     
     if (!patient) {
       return res.status(404).json({ error: '❌ Patient not found or not associated with this hospital' });
@@ -430,6 +442,62 @@ exports.getReportById = async (req, res) => {
     
     res.status(200).json({ report });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getReportsByHospitalId = async (req, res) => {
+  try {
+    const { hospitalId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    const offset = (page - 1) * pageSize;
+
+    // Validate hospital exists
+    const hospital = await Hospital.findByPk(hospitalId);
+    if (!hospital) {
+      return res.status(404).json({ error: '❌ Hospital not found' });
+    }
+
+    const { count, rows: reports } = await Report.findAndCountAll({
+      where: {
+        hospitalId,
+        isDeleted: false
+      },
+      attributes: [
+        'id', 'title', 'reportType', 'patientId',
+        'fileName', 'fileUrl', 'uploadedAt'
+      ],
+      include: [
+        {
+          model: Patient,
+          as: 'patient',
+          attributes: ['firstName', 'lastName']
+        },
+      
+      ],
+      order: [['uploadedAt', 'DESC']],
+      limit: pageSize,
+      offset: offset
+    });
+
+    if (count === 0) {
+      return res.status(404).json({ message: '❌ No reports found for this hospital' });
+    }
+
+    res.status(200).json({
+      totalItems: count,
+      totalPages: Math.ceil(count / pageSize),
+      currentPage: page,
+      pageSize: pageSize,
+      reports: reports.map(report => ({
+        ...report.get({ plain: true }),
+        patientName: `${report.patient.firstName} ${report.patient.lastName}`,
+       
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching hospital reports:', error);
     res.status(500).json({ error: error.message });
   }
 };

@@ -413,6 +413,88 @@ router.get('/:reportId', reportController.getReportById);
 
 /**
  * @swagger
+ * /api/reports/hospital/{hospitalId}:
+ *   get:
+ *     summary: Get all reports for a specific hospital
+ *     tags: [Patient Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: hospitalId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the hospital
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: List of hospital reports with pagination info
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalItems:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 currentPage:
+ *                   type: integer
+ *                 pageSize:
+ *                   type: integer
+ *                 reports:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       title:
+ *                         type: string
+ *                       reportType:
+ *                         type: string
+ *                       patientId:
+ *                         type: integer
+ *                       doctorId:
+ *                         type: integer
+ *                       fileName:
+ *                         type: string
+ *                       fileUrl:
+ *                         type: string
+ *                       uploadedAt:
+ *                         type: string
+ *                         format: date-time
+ *       404:
+ *         description: No reports found for this hospital
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "❌ No reports found for this hospital"
+ *       500:
+ *         description: Server error
+ */
+router.get('/hospital/:hospitalId', reportController.getReportsByHospitalId);
+
+
+
+/**
+ * @swagger
  * /api/reports/{reportId}/download:
  *   get:
  *     summary: Download a report file

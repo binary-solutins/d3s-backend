@@ -476,7 +476,7 @@ exports.getReportsByHospitalId = async (req, res) => {
         },
       
       ],
-      order: [['uploadedAt', 'DESC']],
+      order: [['id', 'DESC']],
       limit: pageSize,
       offset: offset
     });

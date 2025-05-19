@@ -247,12 +247,15 @@ async function getBreastIcon() {
  */
 async function getHospitalLogo(imageUrl) {
   try {
+    const width = 80;
+    const height = 80;
+
     if (!imageUrl) {
-      // Create a default hospital logo
+      // Default hospital logo (SVG)
       const svgLogo = `
-        <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
-          <rect width="40" height="40" fill="#f3f4f6"/>
-          <text x="50%" y="50%" font-family="Arial" font-size="12" fill="#374151" text-anchor="middle" dominant-baseline="middle">H</text>
+        <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+          <rect width="${width}" height="${height}" fill="#f3f4f6"/>
+          <text x="50%" y="50%" font-family="Arial" font-size="24" fill="#374151" text-anchor="middle" dominant-baseline="middle">H</text>
         </svg>
       `;
       return `data:image/svg+xml;base64,${Buffer.from(svgLogo).toString('base64')}`;
@@ -260,18 +263,19 @@ async function getHospitalLogo(imageUrl) {
 
     const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
     const buffer = await sharp(response.data)
-      .resize(40, 40, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
+      .resize(width, height, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
       .png()
       .toBuffer();
-    
+
     return `data:image/png;base64,${buffer.toString('base64')}`;
   } catch (error) {
     console.error('Error fetching hospital logo:', error.message);
-    // Return a fallback logo
+
+    // Fallback SVG logo
     const fallbackSvg = `
-      <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
-        <rect width="40" height="40" fill="#f3f4f6"/>
-        <text x="50%" y="50%" font-family="Arial" font-size="12" fill="#374151" text-anchor="middle" dominant-baseline="middle">H</text>
+      <svg width="80" height="80" xmlns="http://www.w3.org/2000/svg">
+        <rect width="80" height="80" fill="#f3f4f6"/>
+        <text x="50%" y="50%" font-family="Arial" font-size="24" fill="#374151" text-anchor="middle" dominant-baseline="middle">H</text>
       </svg>
     `;
     return `data:image/svg+xml;base64,${Buffer.from(fallbackSvg).toString('base64')}`;
@@ -365,7 +369,7 @@ function getReportTemplate() {
 
         .header-inner {
             display: flex;
-            justify-content: space-between;
+            justify-content:space-between;
             align-items: center;
         }
 
@@ -385,12 +389,12 @@ function getReportTemplate() {
         }
 
         .title {
-            width: 60%;
+           
             text-align: center;
         }
 
         .title h1 {
-            font-size: 24px;
+            font-size: 16px;
             font-weight: 700;
             text-transform: uppercase;
             margin-bottom: 5px;
@@ -404,17 +408,34 @@ function getReportTemplate() {
         }
 
         .hospital-logo {
-            width: 40%;
             text-align: right;
         }
 
         .logo-container {
-            width: 40px;
-            height: 40px;
+            width: 100px;
+            height: 100px;
             display: inline-block;
         }
+            
 
         .logo-container img {
+            width: 100%;
+            height: auto;
+        }
+        
+         .main-logo {
+            text-align: right;
+        }
+
+        .main-logo-container {
+            width: 150px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+        }
+            
+
+        .main-logo-container img {
             width: 100%;
             height: auto;
         }
@@ -529,8 +550,8 @@ function getReportTemplate() {
         }
 
         .image-container {
-            width: 130px !important;
-            height: 130px !important;
+            width: 150px !important;
+            height: 150px !important;
             display: inline-block;
             border: 1px solid #ddd;
             overflow: hidden;
@@ -544,8 +565,13 @@ function getReportTemplate() {
 
         /* Remarks Section */
         .remarks-section {
-            margin: 20px;
+            
             padding: 10px;
+        }
+        
+
+        .mainlogo {
+        margin-top:15px;
         }
 
         .remarks-section p {
@@ -576,7 +602,7 @@ function getReportTemplate() {
             print-color-adjust: exact !important;
             padding: 10px 20px;
             position: absolute;
-            bottom: 0;
+            bottom: 100;
             left: 0;
         }
 
@@ -626,8 +652,10 @@ function getReportTemplate() {
     <div class="container">
         <header class="header">
             <div class="header-inner">
-                <div class="logo">
-                    <h2>BR - <span class="scan-text">Scan</span></h2>
+               <div class="main-logo">
+                    <div class="main-logo-container mainlogo">
+                        <img src="https://i.postimg.cc/wTXh5yJy/logo.jpg" alt="Hospital Logo">
+                    </div>
                 </div>
                 <div class="title">
                     <h1>{{title}}</h1>
@@ -779,8 +807,7 @@ function getReportTemplate() {
         <footer class="footer">
             <div class="disclaimer">
                 <span class="disclaimer-title">Disclaimer:</span> The Breast screening report we provide is based on what we can see in the images. It
-                might change over time, depending on how the pictures are taken and how well we can see. To get a
-                proper diagnosis and more screening, please talk to your doctor, gynecologist, consultant, or oncologist.
+                might change over time, depending on how the pictures are taken and how well we can see.
             </div>
             <div class="powered-by">
                 <span>Powered By</span>

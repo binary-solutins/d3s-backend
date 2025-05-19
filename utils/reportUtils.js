@@ -301,7 +301,7 @@ async function getAWSLogo() {
  * @param {Date} date - Date object
  * @returns {string} - Formatted date string
  */
-function formatDateUTC(date) {
+function formatDate(date) {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const day = date.getUTCDate();
   const month = months[date.getUTCMonth()];

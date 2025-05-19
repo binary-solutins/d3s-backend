@@ -4,330 +4,380 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Breast Screening Report</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         @page {
             size: A4;
             margin: 0;
         }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            color: #333;
+            font-family: 'Roboto', Arial, sans-serif;
             line-height: 1.4;
-            width: 100%;
-            min-height: 100vh;
+            color: #333;
+            background-color: #fff;
+            font-size: 12px;
+            width: 21cm; /* A4 width */
+            height: 29.7cm; /* A4 height */
+            margin: 0 auto;
             position: relative;
-            padding-bottom: 60px; /* Space for footer */
-            box-sizing: border-box;
         }
+
         .container {
             width: 100%;
-            max-width: 794px; /* A4 width in pixels */
+            height: 100%;
             margin: 0 auto;
-            padding: 20px;
-            box-sizing: border-box;
+            padding: 0;
+            position: relative;
         }
+
+        /* Header Section */
         .header {
-            display: table;
             width: 100%;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 10px;
-            table-layout: fixed;
+            padding: 15px 20px;
+            border-bottom: 1px solid #ddd;
+            display: block;
         }
-        .header-cell {
-            display: table-cell;
-            vertical-align: middle;
+
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+
         .logo {
-            width: 100px;
+            width: 20%;
         }
-        .logo img {
-            max-width: 100%;
-            height: auto;
+
+        .logo h2 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #000;
+            margin: 0;
         }
-        .report-title {
+
+        .scan-text {
+            color: #ff4081;
+        }
+
+        .title {
+            width: 60%;
             text-align: center;
         }
-        .report-title h2 {
-            margin: 0;
-            font-size: 18px;
-            font-weight: bold;
+
+        .title h1 {
+            font-size: 24px;
+            font-weight: 700;
             text-transform: uppercase;
+            margin-bottom: 5px;
+            margin-top: 0;
         }
-        .report-title p {
-            margin: 5px 0 0 0;
-            font-size: 12px;
+
+        .date {
+            font-size: 16px;
+            color: #555;
+            margin: 0;
         }
+
         .hospital-logo {
+            width: 20%;
+            text-align: right;
+        }
+
+        .logo-container {
             width: 40px;
             height: 40px;
-            float: right;
-        }
-        .info-section {
-            display: table;
-            width: 100%;
-            margin-bottom: 20px;
-            table-layout: fixed;
-        }
-        .info-box {
-            display: table-cell;
-            width: 80%;
-            border-radius: 5px;
-            background-color: #FFF0F5;
-            overflow: hidden;
-        }
-        .info-box:last-child {
-            padding-right: 0;
-            padding-left: 10px;
-        }
-        .info-box h3 {
-            margin: 10px;
-            padding: 5px 10px;
-            text-align: center;
-            background-color: #777; /* Changed to gray */
-            color: white;
-            font-size: 12px;
-            width: fit-content;
-            border-radius: 5px;
-            text-align: center;
-        }
-        .info-content {
-            padding: 15px;
-            font-size: 12px;
-        }
-        .info-row {
-            clear: both;
-            margin-bottom: 10px;
-            overflow: hidden;
-        }
-        .info-label {
-            float: left;
-            width: 120px; /* Increased width to fit longer labels */
-            color: #666;
-            font-weight: bold;
-        }
-        .info-value {
-            margin-left: 120px;
-            color: #000; /* Made values black */
-        }
-        .screening-section {
-            margin-bottom: 20px;
-            clear: both;
-        }
-        .screening-header {
-            margin-bottom: 10px;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border: 2px solid #FFB6C1; /* Pink border */
-            border-radius: 5px;
-            padding: 5px;
-        }
-        .breast-image-icon {
-            width: 30px;
-            height: 30px;
-            margin-right: 10px;
-            /* Will be replaced with an actual image */
-        }
-        .screening-title {
-            font-size: 14px;
-            font-weight: bold;
-            text-align: center;
-            color: #000; /* Black text */
-        }
-        .images-grid {
-            display: table;
-            width: 100%;
-            margin-bottom: 15px;
-            table-layout: fixed;
-        }
-        .image-column {
-            display: table-cell;
-            width: 33.33%;
-            text-align: center;
-            padding: 0 7px;
-        }
-        .image-column:first-child {
-            padding-left: 0;
-        }
-        .image-column:last-child {
-            padding-right: 0;
-        }
-        .image-column h4 {
-            margin: 0 0 5px 0;
-            font-size: 12px;
-            font-weight: bold;
-            text-align: center; /* Centered text */
-        }
-        .breast-image {
-            width: 130px;
-            height: 130px;
-            object-fit: cover;
-            border: 1px solid #ccc;
-        }
-        .breast-image-placeholder {
-            width: 130px;
-            height: 130px;
-            background-color: #f0f0f0;
-            border: 1px solid #ccc;
             display: inline-block;
         }
-        .remarks {
-            margin-bottom: 20px;
-            clear: both;
-        }
-        .remarks p {
-            font-size: 10px;
-            margin: 0 0 5px 0;
-        }
-        .remarks-line {
-            border-bottom: 1px solid #ccc;
-            height: 20px;
-            margin-bottom: 10px;
-        }
-        .footer {
-            font-size: 8px;
-            padding: 10px;
-            border-top: 1px solid #ccc;
-            display: table;
+
+        .logo-container img {
             width: 100%;
-            table-layout: fixed;
+            height: auto;
+        }
+
+        /* Details Section */
+        .details-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin: 15px 0;
+            padding: 0 20px;
+        }
+
+        .details-box {
+            width: 48%;
             background-color: #FFF0F5;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .details-header {
+            background-color: #000 !important;
+            padding: 10px 15px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .details-header h3 {
+            color: #fff !important;
+            font-size: 18px;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .details-content {
+            padding: 15px;
+        }
+
+        .detail-row {
+            margin-bottom: 8px;
+            display: flex;
+            flex-wrap: nowrap;
+        }
+
+        .detail-label {
+            min-width: 120px;
+            color: #555;
+            font-weight: 500;
+            display: inline-block;
+        }
+
+        .detail-value {
+            color: #000;
+            font-weight: 400;
+            display: inline-block;
+        }
+
+        /* Screening Section */
+        .screening-section {
+            margin: 20px 0;
+            padding: 0 20px;
+            page-break-inside: avoid;
+        }
+
+        .screening-header {
+            display: flex;
+            align-items: center;
+            background-color: #fff;
+            border: 2px solid #FFB6C1;
+            border-radius: 25px;
+            padding: 8px 15px;
+            margin-bottom: 15px;
+            width: fit-content;
+        }
+
+        .breast-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .breast-icon img {
+            width: 100%;
+            height: auto;
+        }
+
+        .screening-header h3 {
+            margin: 0;
+            padding-left: 10px;
+            color: #000;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        /* Images Grid */
+        .images-grid {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .image-column {
+            width: 32%;
+            text-align: center;
+        }
+
+        .image-column h4 {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .image-container {
+            width: 130px !important;
+            height: 130px !important;
+            display: inline-block;
+            border: 1px solid #ddd;
+            overflow: hidden;
+        }
+
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Remarks Section */
+        .remarks-section {
+            margin: 20px;
+            padding: 10px;
+        }
+
+        .remarks-section p {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .remarks-line {
+            height: 1px;
+            background-color: #ddd;
+            margin: 15px 0;
+        }
+
+        /* Footer Section */
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            background-color: #FFF0F5 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            padding: 10px 20px;
             position: absolute;
             bottom: 0;
             left: 0;
         }
+
         .disclaimer {
-            display: table-cell;
-            vertical-align: middle;
             width: 75%;
-            padding-right: 10px;
+            font-size: 12px;
+            line-height: 1.3;
         }
+
         .disclaimer-title {
-            color: #800000;
-            font-weight: bold;
+            font-weight: 700;
+            color: #800020;
         }
+
         .powered-by {
-            display: table-cell;
-            vertical-align: middle;
             width: 25%;
             text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
         }
+
         .powered-by span {
-            margin-right: 5px;
+            margin-right: 10px;
         }
-        .powered-by img {
-            height: 20px;
-            vertical-align: middle;
+
+        .powered-logos {
+            display: inline-flex;
+            align-items: center;
         }
-        
-        /* Add print-specific CSS */
-        @media print {
-            .container {
-                width: 100% !important;
-                max-width: none !important;
-            }
-            
-            .header, .info-section, .images-grid, .footer {
-                page-break-inside: avoid;
-            }
-            
-            body {
-                padding-bottom: 60px; /* Space for footer */
-            }
-            
-            .footer {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-            }
+
+        .powered-logos img {
+            height: 25px;
+            width: auto;
+            margin-left: 10px;
+        }
+
+        /* Force background colors in print */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <div class="header-cell" style="width: 20%;">
+        <header class="header">
+            <div class="header-inner">
                 <div class="logo">
-                    {{#if brScanLogo}}
-                        <img src="{{brScanLogo}}" alt="BR-Scan Logo">
-                    {{else}}
-                        <h2>BR - <span style="color:#ff6699">Scan</span></h2>
-                    {{/if}}
+                    <h2>BR - <span class="scan-text">Scan</span></h2>
+                </div>
+                <div class="title">
+                    <h1>{{title}}</h1>
+                    <p class="date">{{date}}</p>
+                </div>
+                <div class="hospital-logo">
+                    <div class="logo-container">
+                        <img src="{{hospitalLogo}}" alt="Hospital Logo">
+                    </div>
                 </div>
             </div>
-            <div class="header-cell" style="width: 60%;">
-                <div class="report-title">
-                    <h2>{{title}}</h2>
-                    <p>Date: {{date}}</p>
-                </div>
-            </div>
-            <div class="header-cell" style="width: 20%; text-align: right;">
-                {{#if hospitalLogo}}
-                    <img src="{{hospitalLogo}}" alt="Hospital Logo" class="hospital-logo">
-                {{/if}}
-            </div>
-        </div>
+        </header>
 
-        <div class="info-section">
-            <div class="info-box">
-                <h3>Subject Details</h3>
-                <div class="info-content">
-                    <div class="info-row">
-                        <div class="info-label">Name:</div>
-                        <div class="info-value">{{patient.dataValues.firstName}} {{patient.dataValues.lastName}}</div>
+        <div class="details-container">
+            <div class="details-box">
+                <div class="details-header">
+                    <h3>Subject Details</h3>
+                </div>
+                <div class="details-content">
+                    <div class="detail-row">
+                        <div class="detail-label">Name:</div>
+                        <div class="detail-value">{{patient.firstName}} {{patient.lastName}}</div>
                     </div>
-                    <div class="info-row">
-                        <div class="info-label">Address:</div>
-                        <div class="info-value">{{patient.dataValues.address}}</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Address:</div>
+                        <div class="detail-value">{{patient.address}}</div>
                     </div>
-                    <div class="info-row">
-                        <div class="info-label">Contact:</div>
-                        <div class="info-value">{{patient.dataValues.contact}}</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Contact:</div>
+                        <div class="detail-value">{{patient.contact}}</div>
                     </div>
-                    <div class="info-row">
-                        <div class="info-label">Gender:</div>
-                        <div class="info-value">{{patient.dataValues.gender}}</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Gender:</div>
+                        <div class="detail-value">{{patient.gender}}</div>
                     </div>
-                    <div class="info-row">
-                        <div class="info-label">Age:</div>
-                        <div class="info-value">{{patient.dataValues.age}} Years</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Age:</div>
+                        <div class="detail-value">{{patient.age}} Years</div>
                     </div>
-                    <div class="info-row">
-                        <div class="info-label">Weight:</div>
-                        <div class="info-value">{{patient.dataValues.weight}} kg</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Weight:</div>
+                        <div class="detail-value">{{patient.weight}} kg</div>
                     </div>
-                    <div class="info-row">
-                        <div class="info-label">Height:</div>
-                        <div class="info-value">{{patient.dataValues.height}} cm</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Height:</div>
+                        <div class="detail-value">{{patient.height}}</div>
                     </div>
                 </div>
             </div>
-            <div class="info-box">
-                <h3>Examiner Details</h3>
-                <div class="info-content">
-                    <div class="info-row">
-                        <div class="info-label">Hospital Name:</div>
-                        <div class="info-value">{{hospital.dataValues.name}}</div>
+
+            <div class="details-box">
+                <div class="details-header">
+                    <h3>Examiner Details</h3>
+                </div>
+                <div class="details-content">
+                    <div class="detail-row">
+                        <div class="detail-label">Hospital Name:</div>
+                        <div class="detail-value">{{hospital.name}}</div>
                     </div>
-                    <div class="info-row">
-                        <div class="info-label">Hospital Address:</div>
-                        <div class="info-value">{{hospital.dataValues.address}}</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Hospital Address:</div>
+                        <div class="detail-value">{{hospital.address}}</div>
                     </div>
-                    <div class="info-row">
-                        <div class="info-label">Doctor Name:</div>
-                        <div class="info-value">{{doctor.dataValues.name}}</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Doctor Name:</div>
+                        <div class="detail-value">{{doctor.name}}</div>
                     </div>
-                    <div class="info-row">
-                        <div class="info-label">Designation:</div>
-                        <div class="info-value">{{doctor.dataValues.specialization}}</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Designation:</div>
+                        <div class="detail-value">{{doctor.specialization}}</div>
                     </div>
-                    <div class="info-row">
-                        <div class="info-label">Screening Place:</div>
-                        <div class="info-value">{{hospital.dataValues.name}}</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Screening Place:</div>
+                        <div class="detail-value">{{hospital.name}}</div>
                     </div>
                 </div>
             </div>
@@ -335,91 +385,81 @@
 
         <div class="screening-section">
             <div class="screening-header">
-                <!-- Replaced icon with image placeholder - you can replace this with your image -->
-                <img src="{{breastIcon}}" alt="Breast Icon" class="breast-image-icon">
-                <div class="screening-title">LEFT BREAST SCREENING VISUALS</div>
+                <div class="breast-icon">
+                    <img src="{{breastIcon}}" alt="Breast Icon">
+                </div>
+                <h3>Left Breast Screening Visuals</h3>
             </div>
             <div class="images-grid">
                 <div class="image-column">
                     <h4>I. Top Side Image</h4>
-                    {{#if leftTopImage}}
-                        <img src="{{leftTopImage}}" alt="Left Breast Top View" class="breast-image">
-                    {{else}}
-                        <div class="breast-image-placeholder"></div>
-                    {{/if}}
+                    <div class="image-container">
+                        <img src="{{leftTopImage}}" alt="Left Breast Top Side">
+                    </div>
                 </div>
                 <div class="image-column">
                     <h4>II. Left Side Image</h4>
-                    {{#if leftCenterImage}}
-                        <img src="{{leftCenterImage}}" alt="Left Breast Left View" class="breast-image">
-                    {{else}}
-                        <div class="breast-image-placeholder"></div>
-                    {{/if}}
+                    <div class="image-container">
+                        <img src="{{leftCenterImage}}" alt="Left Breast Left Side">
+                    </div>
                 </div>
                 <div class="image-column">
                     <h4>III. Right Side Image</h4>
-                    {{#if leftBottomImage}}
-                        <img src="{{leftBottomImage}}" alt="Left Breast Right View" class="breast-image">
-                    {{else}}
-                        <div class="breast-image-placeholder"></div>
-                    {{/if}}
+                    <div class="image-container">
+                        <img src="{{leftBottomImage}}" alt="Left Breast Right Side">
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="screening-section">
             <div class="screening-header">
-                <!-- Replaced icon with image placeholder - you can replace this with your image -->
-                <img src="{{breastIcon}}" alt="Breast Icon" class="breast-image-icon">
-                <div class="screening-title">RIGHT BREAST SCREENING VISUALS</div>
+                <div class="breast-icon">
+                    <img src="{{breastIcon}}" alt="Breast Icon">
+                </div>
+                <h3>Right Breast Screening Visuals</h3>
             </div>
             <div class="images-grid">
                 <div class="image-column">
                     <h4>I. Top Side Image</h4>
-                    {{#if rightTopImage}}
-                        <img src="{{rightTopImage}}" alt="Right Breast Top View" class="breast-image">
-                    {{else}}
-                        <div class="breast-image-placeholder"></div>
-                    {{/if}}
+                    <div class="image-container">
+                        <img src="{{rightTopImage}}" alt="Right Breast Top Side">
+                    </div>
                 </div>
                 <div class="image-column">
-                    <h4>II. Center Side Image</h4>
-                    {{#if rightCenterImage}}
-                        <img src="{{rightCenterImage}}" alt="Right Breast Center View" class="breast-image">
-                    {{else}}
-                        <div class="breast-image-placeholder"></div>
-                    {{/if}}
+                    <h4>II. Left Side Image</h4>
+                    <div class="image-container">
+                        <img src="{{rightCenterImage}}" alt="Right Breast Left Side">
+                    </div>
                 </div>
                 <div class="image-column">
-                    <h4>III. Bottom Side Image</h4>
-                    {{#if rightBottomImage}}
-                        <img src="{{rightBottomImage}}" alt="Right Breast Bottom View" class="breast-image">
-                    {{else}}
-                        <div class="breast-image-placeholder"></div>
-                    {{/if}}
+                    <h4>III. Right Side Image</h4>
+                    <div class="image-container">
+                        <img src="{{rightBottomImage}}" alt="Right Breast Right Side">
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="remarks">
+        <div class="remarks-section">
             <p>Remarks:</p>
             <div class="remarks-line"></div>
             <div class="remarks-line"></div>
         </div>
-    </div>
-    
-    <div class="footer">
-        <div class="disclaimer">
-            <span class="disclaimer-title">Disclaimer:</span> The Breast screening report we provide is based on what we can see in the images. It
-            might change once the screening is done at the hospital itself. The staff will help with the future
-            steps; diagnostic treatments. Please talk to your doctor, gynecologist, oncologist, or surgeon.
-        </div>
-        <div class="powered-by">
-            <span>Powered by:</span>
-            {{#if awsLogo}}
-                <img src="https://www.logo.wine/a/logo/Microsoft_Azure/Microsoft_Azure-Logo.wine.svg" alt="AWS">
-            {{/if}}
-        </div>
+
+        <footer class="footer">
+            <div class="disclaimer">
+                <span class="disclaimer-title">Disclaimer:</span> The Breast screening report we provide is based on what we can see in the images. It
+                might change over time, depending on how the pictures are taken and how well we can see. To get a
+                proper diagnosis and more screening, please talk to your doctor, gynecologist, consultant, or oncologist.
+            </div>
+            <div class="powered-by">
+                <span>Powered By</span>
+                <div class="powered-logos">
+                    <img src="{{awsLogo}}" alt="AWS">
+                </div>
+            </div>
+        </footer>
     </div>
 </body>
 </html>

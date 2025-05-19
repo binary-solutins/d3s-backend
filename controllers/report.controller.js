@@ -197,7 +197,7 @@ exports.createBreastCancerReport = async (req, res) => {
       where: {
         id: hospitalId,
       },
-      attributes: ['id', 'name', 'address', 'imageUrl'] // Explicitly include imageUrl
+      attributes: ['id', 'name', 'address', 'imageUrl'] 
     });
 
     if (!doctor) {
@@ -219,23 +219,49 @@ exports.createBreastCancerReport = async (req, res) => {
 
     const uploadedImages = await Promise.all(uploadPromises);
     
-    // Generate PDF report from the uploaded images
-    const pdfReportData = await generateBreastCancerReport(
-      uploadedImages, 
-      patient, 
-      doctor, 
-      hospital, // Now includes the imageUrl property
-      title || 'Breast Cancer Screening Report'
-    );
-
+    // Create an image map that matches the expected format in generateBreastCancerReport
+    const imageMap = {};
+    uploadedImages.forEach(img => {
+      imageMap[img.fieldName] = img.fileUrl;
+    });
+    
     console.log("✅ Fetched Entities:", {
       patient,
       doctor,
       hospital
     });
+    
+    // Prepare the report data in the correct format expected by generateBreastCancerReport
+    const pdfData = {
+      title: title || 'BREAST SCREENING REPORT',
+      patient: {
+        firstName: patient.firstName || '',
+        lastName: patient.lastName || '',
+        address: patient.address || 'Not specified',
+        contact: patient.contact || 'Not provided',
+        gender: patient.gender || 'Not specified',
+        age: patient.age || 'N/A',
+        weight: patient.weight || 'N/A',
+        height: patient.height || 'N/A'
+      },
+      doctor: {
+        name: doctor.name || '',
+        specialization: doctor.specialization || 'General Practitioner'
+      },
+      hospital: {
+        name: hospital.name || 'Unknown Hospital',
+        address: hospital.address || 'Address not provided',
+        imageUrl: hospital.imageUrl
+      },
+      images: imageMap
+    };
+
+    // Generate PDF report from the uploaded images
+    const pdfReportData = await generateBreastCancerReport(pdfData);
 
     const currentDate = new Date();
-const formattedDate = currentDate.toISOString().replace(/[:.]/g, '-');
+    const formattedDate = currentDate.toISOString().replace(/[:.]/g, '-');
+    
     // Upload the generated PDF to Appwrite
     const pdfFile = {
       buffer: pdfReportData,
@@ -243,8 +269,6 @@ const formattedDate = currentDate.toISOString().replace(/[:.]/g, '-');
       originalname: `${patient.lastName}_${patient.firstName}_${formattedDate}.pdf`,
       size: pdfReportData.length
     };
-
-
     
     const pdfUploadData = await uploadToAppwrite(pdfFile, patientId, 'generated_pdf_report');
 
@@ -252,7 +276,7 @@ const formattedDate = currentDate.toISOString().replace(/[:.]/g, '-');
     const report = await Report.create({
       title: title || 'Breast Cancer Screening Report',
       description: description || 'Breast cancer screening report with 6 images',
-      reportType: 'Other', // Fixed: proper report type
+      reportType: 'Other', 
       patientId,
       doctorId,
       hospitalId,
@@ -260,7 +284,7 @@ const formattedDate = currentDate.toISOString().replace(/[:.]/g, '-');
       fileUrl: pdfUploadData.fileUrl,
       fileName: pdfUploadData.fileName,
       fileType: pdfUploadData.fileType,
-      fileSize: pdfUploadData.fileSize || pdfReportData.length, // Ensure fileSize is not null
+      fileSize: pdfUploadData.fileSize || pdfReportData.length,
       metadata: {
         images: uploadedImages.map(img => ({
           position: img.fieldName,

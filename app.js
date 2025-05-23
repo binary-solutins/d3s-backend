@@ -38,7 +38,7 @@ const swaggerOptions = {
       },
 
       {
-        url: 'https://d3s-backend.onrender.com',
+        url: 'https://d3s-backend-dva9.onrender.com',
         description: '🌐 Testing server',
       },
     ],

@@ -294,55 +294,68 @@ exports.getProductById = async (req, res) => {
 exports.placeOrder = async (req, res) => {
   try {
     const {
-      productId,
       customerName,
       customerEmail,
       customerPhone,
       shippingAddress,
       billingAddress,
-      quantity = 1,
+      items,
+      subtotal,
+      tax,
+      total,
       paymentMethod,
       transactionId = null,
       notes = null
     } = req.body;
 
-    // Find product
-    const product = await Product.findByPk(productId);
-    if (!product) return res.status(404).json({ error: '❌ Product not found' });
-    if (product.stock < quantity) return res.status(400).json({ error: '❌ Insufficient stock' });
+    // Validate items
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: '❌ Items are required' });
+    }
+
+    // Check stock for all items
+    for (const item of items) {
+      const product = await Product.findByPk(item.productId);
+      if (!product) {
+        return res.status(404).json({ error: `❌ Product not found: ${item.productId}` });
+      }
+      if (product.stock < item.quantity) {
+        return res.status(400).json({ error: `❌ Insufficient stock for product: ${product.name}` });
+      }
+    }
 
     // Generate sequential order ID
     const paddedCounter = orderCounter.toString().padStart(6, '0');
     const orderId = `ORD-${paddedCounter}`;
     orderCounter++;
 
-    // Calculate total
-    const totalAmount = product.price * quantity;
-
     // Create order
     const order = await Order.create({
       orderId,
-      productId,
       customerName,
       customerEmail,
       customerPhone,
       shippingAddress,
       billingAddress,
-      quantity,
-      totalAmount,
+      items,
+      subtotal,
+      tax,
+      total,
       paymentMethod,
       transactionId,
       notes
     });
 
-    // Update stock
-    await product.update({ stock: product.stock - quantity });
+    // Update stock for all items
+    for (const item of items) {
+      const product = await Product.findByPk(item.productId);
+      await product.update({ stock: product.stock - item.quantity });
+    }
 
     res.status(201).json({
       message: '✅ Order placed successfully',
       orderId: order.orderId,
-      product: product.name,
-      totalAmount: order.totalAmount,
+      totalAmount: order.total,
       status: order.status
     });
   } catch (error) {

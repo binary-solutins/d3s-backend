@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerUI = require('swagger-ui-express');
+const initializeOrderCounter = require('./scripts/initOrderCounter');
 require('./services/cron');
 require('dotenv').config();
 
@@ -71,6 +72,7 @@ app.use('/api', require('./routes/location.route'));
 app.use('/api/reports', require('./routes/report.route'));
 app.use('/api/admin', require('./routes/admin.route'));
 app.use('/api', require('./routes/dashboard.route'));
+app.use('/api/orders', require('./routes/order.route'));
 // 📚 Swagger UI
 app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
@@ -85,6 +87,7 @@ db.sequelize.sync({ alter: false })
 
 // 🚀 Start Server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  await initializeOrderCounter();
   console.log(`🟢 Server running at: http://localhost:${PORT}`);
 });

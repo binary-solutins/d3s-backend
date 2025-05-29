@@ -153,6 +153,32 @@ router.get('/products', orderController.getAllProducts);
 
 /**
  * @swagger
+ * /api/orders/getProductById:
+ *   post:
+ *     summary: Get product by ID
+ *     tags: [Products]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               product_id:
+ *                 type: string
+ *                 description: Product ID
+ *     responses:
+ *       200:
+ *         description: Product details
+ *       404:
+ *         description: Product not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/getProductById', orderController.getProductById);
+
+/**
+ * @swagger
  * /api/orders:
  *   post:
  *     summary: Place a new order

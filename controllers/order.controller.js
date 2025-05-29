@@ -273,6 +273,24 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
+exports.getProductById = async (req, res) => {
+  const id = req.body.product_id;
+  
+  if (!id) {
+    return res.status(400).json({ error: 'Product ID is required' });
+  }
+
+  try {
+    const product = await Product.findByPk(id);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.status(200).json(product);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.placeOrder = async (req, res) => {
   try {
     const {

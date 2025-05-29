@@ -40,7 +40,7 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: 'Pending'
       },
       paymentMethod: {
-        type: DataTypes.ENUM('Credit Card', 'Debit Card', 'Net Banking', 'UPI', 'COD'),
+        type: DataTypes.ENUM('Credit Card', 'Debit Card', 'Net Banking', 'UPI', 'COD','PayPal'),
         allowNull: false
       },
       transactionId: {

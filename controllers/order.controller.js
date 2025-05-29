@@ -340,7 +340,7 @@ exports.placeOrder = async (req, res) => {
       items,
       subtotal,
       tax,
-      total,
+      totalAmount: total,
       paymentMethod,
       transactionId,
       notes

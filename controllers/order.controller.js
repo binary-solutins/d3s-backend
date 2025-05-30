@@ -301,65 +301,114 @@ exports.placeOrder = async (req, res) => {
       billingAddress,
       items,
       subtotal,
-      tax,
+      tax = 0,
       total,
       paymentMethod,
       transactionId = null,
       notes = null
     } = req.body;
 
-    // Validate items
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: '❌ Items are required' });
+    // Validate required fields
+    if (!customerName || !customerEmail || !customerPhone || !shippingAddress || !billingAddress) {
+      return res.status(400).json({ error: '❌ Missing required customer information' });
     }
 
-    // Check stock for all items
+    if (!paymentMethod || !subtotal || !total) {
+      return res.status(400).json({ error: '❌ Missing required order information' });
+    }
+
+    // Validate items
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: '❌ Items are required and must be an array' });
+    }
+
+    // Validate each item structure
+    for (const item of items) {
+      if (!item.productId || !item.quantity || !item.price) {
+        return res.status(400).json({ 
+          error: '❌ Each item must have productId, quantity, and price' 
+        });
+      }
+      if (item.quantity <= 0) {
+        return res.status(400).json({ 
+          error: '❌ Item quantity must be greater than 0' 
+        });
+      }
+    }
+
+    // Check if products exist and have sufficient stock
+    const productChecks = [];
     for (const item of items) {
       const product = await Product.findByPk(item.productId);
       if (!product) {
-        return res.status(404).json({ error: `❌ Product not found: ${item.productId}` });
+        return res.status(404).json({ 
+          error: `❌ Product not found: ${item.productId}` 
+        });
       }
       if (product.stock < item.quantity) {
-        return res.status(400).json({ error: `❌ Insufficient stock for product: ${product.name}` });
+        return res.status(400).json({ 
+          error: `❌ Insufficient stock for product: ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}` 
+        });
       }
+      productChecks.push({ product, item });
     }
 
-    // Generate sequential order ID
+    // Generate unique order ID
     const paddedCounter = orderCounter.toString().padStart(6, '0');
     const orderId = `ORD-${paddedCounter}`;
     orderCounter++;
 
-    // Create order
-    const order = await Order.create({
+    // Create order entries and update stock
+    const orderPromises = productChecks.map(async ({ product, item }) => {
+      // Calculate item total
+      const itemTotal = item.quantity * item.price;
+
+      // Update product stock
+      await product.update({ 
+        stock: product.stock - item.quantity 
+      });
+
+      // Create order entry
+      return Order.create({
+        orderId,
+        customerName,
+        customerEmail,
+        customerPhone,
+        shippingAddress,
+        billingAddress,
+        productId: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+        itemTotal,
+        subtotal,
+        tax,
+        totalAmount: total,
+        paymentMethod,
+        transactionId,
+        notes
+      });
+    });
+
+    const createdOrders = await Promise.all(orderPromises);
+
+    res.status(201).json({
+      success: true,
+      message: '✅ Order placed successfully',
       orderId,
-      customerName,
-      customerEmail,
-      customerPhone,
-      shippingAddress,
-      billingAddress,
-      items,
+      itemCount: createdOrders.length,
       subtotal,
       tax,
       totalAmount: total,
+      status: createdOrders[0].status,
       paymentMethod,
-      transactionId,
-      notes
-    });
-
-    // Update stock for all items
-    for (const item of items) {
-      const product = await Product.findByPk(item.productId);
-      await product.update({ stock: product.stock - item.quantity });
-    }
-
-    res.status(201).json({
-      message: '✅ Order placed successfully',
-      orderId: order.orderId,
-      totalAmount: order.total,
-      status: order.status
+      transactionId
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Place order error:', error);
+    res.status(500).json({ 
+      error: '❌ Failed to place order',
+      details: error.message 
+    });
   }
 };
 
@@ -367,26 +416,67 @@ exports.getOrderById = async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    const order = await Order.findOne({
+    if (!orderId) {
+      return res.status(400).json({ error: '❌ Order ID is required' });
+    }
+
+    const orders = await Order.findAll({
       where: { orderId },
       include: [{
         model: Product,
         as: 'product',
         attributes: ['id', 'name', 'price', 'category', 'description', 'images']
-      }]
+      }],
+      order: [['createdAt', 'ASC']]
     });
 
-    if (!order) return res.status(404).json({ error: '❌ Order not found' });
+    if (!orders.length) {
+      return res.status(404).json({ error: '❌ Order not found' });
+    }
 
-    res.status(200).json(order);
+    // Group order data
+    const orderData = {
+      orderId: orders[0].orderId,
+      customerName: orders[0].customerName,
+      customerEmail: orders[0].customerEmail,
+      customerPhone: orders[0].customerPhone,
+      shippingAddress: orders[0].shippingAddress,
+      billingAddress: orders[0].billingAddress,
+      subtotal: orders[0].subtotal,
+      tax: orders[0].tax,
+      totalAmount: orders[0].totalAmount,
+      status: orders[0].status,
+      paymentMethod: orders[0].paymentMethod,
+      transactionId: orders[0].transactionId,
+      notes: orders[0].notes,
+      createdAt: orders[0].createdAt,
+      updatedAt: orders[0].updatedAt,
+      items: orders.map(order => ({
+        productId: order.productId,
+        product: order.product,
+        quantity: order.quantity,
+        price: order.price,
+        itemTotal: order.itemTotal
+      }))
+    };
+
+    res.status(200).json(orderData);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Get order error:', error);
+    res.status(500).json({ 
+      error: '❌ Failed to retrieve order',
+      details: error.message 
+    });
   }
 };
 
 exports.getOrdersByEmail = async (req, res) => {
   try {
     const { email } = req.params;
+
+    if (!email) {
+      return res.status(400).json({ error: '❌ Email is required' });
+    }
 
     const orders = await Order.findAll({
       where: { customerEmail: email },
@@ -399,12 +489,175 @@ exports.getOrdersByEmail = async (req, res) => {
     });
 
     if (!orders.length) {
-      return res.status(404).json({ message: '❌ No orders found for this email' });
+      return res.status(404).json({ 
+        message: '❌ No orders found for this email',
+        email 
+      });
     }
 
-    res.status(200).json(orders);
+    // Group orders by orderId
+    const groupedOrders = {};
+    orders.forEach(order => {
+      if (!groupedOrders[order.orderId]) {
+        groupedOrders[order.orderId] = {
+          orderId: order.orderId,
+          customerName: order.customerName,
+          customerEmail: order.customerEmail,
+          customerPhone: order.customerPhone,
+          shippingAddress: order.shippingAddress,
+          billingAddress: order.billingAddress,
+          subtotal: order.subtotal,
+          tax: order.tax,
+          totalAmount: order.totalAmount,
+          status: order.status,
+          paymentMethod: order.paymentMethod,
+          transactionId: order.transactionId,
+          notes: order.notes,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+          items: []
+        };
+      }
+      
+      groupedOrders[order.orderId].items.push({
+        productId: order.productId,
+        product: order.product,
+        quantity: order.quantity,
+        price: order.price,
+        itemTotal: order.itemTotal
+      });
+    });
+
+    const result = Object.values(groupedOrders);
+    
+    res.status(200).json({
+      success: true,
+      count: result.length,
+      orders: result
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Get orders by email error:', error);
+    res.status(500).json({ 
+      error: '❌ Failed to retrieve orders',
+      details: error.message 
+    });
+  }
+};
+
+// Get all orders (admin function)
+exports.getAllOrders = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status } = req.query;
+    const offset = (page - 1) * limit;
+
+    const whereClause = {};
+    if (status) {
+      whereClause.status = status;
+    }
+
+    const { count, rows: orders } = await Order.findAndCountAll({
+      where: whereClause,
+      include: [{
+        model: Product,
+        as: 'product',
+        attributes: ['id', 'name', 'price', 'category', 'images']
+      }],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    // Group orders by orderId
+    const groupedOrders = {};
+    orders.forEach(order => {
+      if (!groupedOrders[order.orderId]) {
+        groupedOrders[order.orderId] = {
+          orderId: order.orderId,
+          customerName: order.customerName,
+          customerEmail: order.customerEmail,
+          customerPhone: order.customerPhone,
+          shippingAddress: order.shippingAddress,
+          billingAddress: order.billingAddress,
+          subtotal: order.subtotal,
+          tax: order.tax,
+          totalAmount: order.totalAmount,
+          status: order.status,
+          paymentMethod: order.paymentMethod,
+          transactionId: order.transactionId,
+          notes: order.notes,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+          items: []
+        };
+      }
+      
+      groupedOrders[order.orderId].items.push({
+        productId: order.productId,
+        product: order.product,
+        quantity: order.quantity,
+        price: order.price,
+        itemTotal: order.itemTotal
+      });
+    });
+
+    const result = Object.values(groupedOrders);
+    
+    res.status(200).json({
+      success: true,
+      totalRecords: count,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(count / limit),
+      orders: result
+    });
+  } catch (error) {
+    console.error('Get all orders error:', error);
+    res.status(500).json({ 
+      error: '❌ Failed to retrieve orders',
+      details: error.message 
+    });
+  }
+};
+
+// Update order status
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
+
+    if (!orderId || !status) {
+      return res.status(400).json({ 
+        error: '❌ Order ID and status are required' 
+      });
+    }
+
+    const validStatuses = ['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        error: '❌ Invalid status. Valid statuses are: ' + validStatuses.join(', ') 
+      });
+    }
+
+    const [updatedRowsCount] = await Order.update(
+      { status },
+      { where: { orderId } }
+    );
+
+    if (updatedRowsCount === 0) {
+      return res.status(404).json({ error: '❌ Order not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `✅ Order status updated to ${status}`,
+      orderId,
+      newStatus: status
+    });
+  } catch (error) {
+    console.error('Update order status error:', error);
+    res.status(500).json({ 
+      error: '❌ Failed to update order status',
+      details: error.message 
+    });
   }
 };
 

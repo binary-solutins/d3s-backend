@@ -21,6 +21,12 @@ exports.getDoctorsByHospital = async (req, res) => {
   try {
     const { hospitalId } = req.params;
 
+    // First check if hospital exists and get verification status
+    const hospital = await Hospital.findByPk(hospitalId);
+    if (!hospital) {
+      return res.status(404).json({ error: '❌ Hospital not found' });
+    }
+
     const doctors = await Doctor.findAll({
       where: { hospitalId },
     });
@@ -28,11 +34,15 @@ exports.getDoctorsByHospital = async (req, res) => {
     if (!doctors.length) {
       return res.status(200).json({ 
         doctors: [], 
-        message: '❌ No doctors found for this hospital' 
+        message: '❌ No doctors found for this hospital',
+        isHospitalVerified: hospital.isVerified
       });
     }
 
-    res.status(200).json(doctors);
+    res.status(200).json({
+      doctors: doctors.map(doctor => doctor.toJSON()),
+      isHospitalVerified: hospital.isVerified
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

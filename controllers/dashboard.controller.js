@@ -4,7 +4,6 @@ const { Op, Sequelize } = require('sequelize');
 
 exports.getAdminDashboard = async (req, res) => {
   try {
-    // System-wide Counts
     const [
       totalHospitals,
       totalPatients,
@@ -21,7 +20,6 @@ exports.getAdminDashboard = async (req, res) => {
       })
     ]);
 
-    // Growth Trends (Last 6 Months)
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 

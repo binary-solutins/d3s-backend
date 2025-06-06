@@ -7,7 +7,10 @@ exports.createPatient = async (req, res) => {
     const { firstName, lastName, age, weight, height, contact, gender, address, adharNumber, email, hospitalId } = req.body;
 
     const hospital = await Hospital.findByPk(hospitalId);
-    if (!hospital) return res.status(404).json({ error: '❌ Hospital not found' });
+    if (!hospital) {
+      console.error(`❌ Hospital not found with ID: ${hospitalId}`);
+      return res.status(404).json({ error: '❌ Hospital not found' });
+    }
 
     const patient = await Patient.create({ 
       firstName, 
@@ -23,9 +26,18 @@ exports.createPatient = async (req, res) => {
       hospitalId 
     });
     
+    console.log(`✅ Patient created successfully with ID: ${patient.id}`);
     res.status(201).json(patient);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('❌ Error creating patient:', {
+      error: error.message,
+      stack: error.stack,
+      requestBody: req.body
+    });
+    res.status(500).json({ 
+      error: 'An error occurred while creating the patient',
+      details: error.message 
+    });
   }
 };
 
@@ -105,7 +117,8 @@ exports.deletePatient = async (req, res) => {
     const patient = await Patient.findByPk(id);
     if (!patient) return res.status(404).json({ error: '❌ Patient not found' });
 
-    await patient.destroy();
+    // Force delete to bypass foreign key constraints
+    await patient.destroy({ force: true });
     res.status(200).json({ message: '✅ Patient deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });

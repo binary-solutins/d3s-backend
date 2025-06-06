@@ -48,11 +48,16 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    isDeleted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    }
   });
-
+  
   Patient.associate = (models) => {
     Patient.belongsTo(models.Hospital, { foreignKey: 'hospitalId', as: 'hospital' });
   };
-
+  
   return Patient;
 };

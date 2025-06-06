@@ -77,7 +77,7 @@ app.use('/api/orders', require('./routes/order.route'));
 app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
 // 🧩 Database Sync
-db.sequelize.sync({ alter: false })
+db.sequelize.sync({ alter: true })
   .then(() => {
     console.log('✅ Database synced successfully');
   })

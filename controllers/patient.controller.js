@@ -23,7 +23,8 @@ exports.createPatient = async (req, res) => {
       address, 
       adharNumber, 
       email, 
-      hospitalId 
+      hospitalId,
+      isDeleted: false
     });
     
     console.log(`✅ Patient created successfully with ID: ${patient.id}`);
@@ -41,13 +42,16 @@ exports.createPatient = async (req, res) => {
   }
 };
 
-// 📋 Get all patients for a specific hospital
+// 📋 Get all patients for a specific hospital (excluding deleted ones)
 exports.getPatientsByHospital = async (req, res) => {
   try {
     const { hospitalId } = req.params;
 
     const patients = await Patient.findAll({
-      where: { hospitalId },
+      where: { 
+        hospitalId,
+        isDeleted: false  // Only show non-deleted patients
+      },
       include: [{ model: Hospital, as: 'hospital' }]
     });
 
@@ -64,13 +68,17 @@ exports.getPatientsByHospital = async (req, res) => {
   }
 };
 
-// 🔍 Get a single patient by ID
+// 🔍 Get a single patient by ID (excluding deleted ones)
 exports.getPatientById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const patient = await Patient.findByPk(id, { 
-      include: [{ model: Hospital, as: 'hospital' }] 
+    const patient = await Patient.findOne({
+      where: {
+        id,
+        isDeleted: false  // Only show non-deleted patients
+      },
+      include: [{ model: Hospital, as: 'hospital' }]
     });
     
     if (!patient) return res.status(404).json({ error: '❌ Patient not found' });
@@ -87,7 +95,13 @@ exports.updatePatient = async (req, res) => {
     const { id } = req.params;
     const { firstName, lastName, age, weight, height, contact, gender, address, adharNumber, email } = req.body;
 
-    const patient = await Patient.findByPk(id);
+    const patient = await Patient.findOne({
+      where: {
+        id,
+        isDeleted: false  // Only update non-deleted patients
+      }
+    });
+    
     if (!patient) return res.status(404).json({ error: '❌ Patient not found' });
 
     await patient.update({ 
@@ -109,28 +123,39 @@ exports.updatePatient = async (req, res) => {
   }
 };
 
-// 🗑️ Delete a patient
+// 🗑️ Soft delete a patient (set isDeleted to true)
 exports.deletePatient = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const patient = await Patient.findByPk(id);
+    const patient = await Patient.findOne({
+      where: {
+        id,
+        isDeleted: false  // Only delete non-deleted patients
+      }
+    });
+    
     if (!patient) return res.status(404).json({ error: '❌ Patient not found' });
 
-    // Force delete to bypass foreign key constraints
-    await patient.destroy({ force: true });
+    // Soft delete - set isDeleted to true instead of destroying the record
+    await patient.update({ isDeleted: true });
+    
     res.status(200).json({ message: '✅ Patient deleted successfully' });
   } catch (error) {
+    console.error('❌ Error deleting patient:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// 🔍 Search patients
+// 🔍 Search patients (excluding deleted ones)
 exports.searchPatients = async (req, res) => {
   try {
     const { query, hospitalId } = req.query;
     
-    const whereClause = { hospitalId };
+    const whereClause = { 
+      hospitalId,
+      isDeleted: false  // Only search non-deleted patients
+    };
     
     if (query) {
       whereClause[Op.or] = [
@@ -149,6 +174,51 @@ exports.searchPatients = async (req, res) => {
     
     res.status(200).json(patients);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// 📊 Get deleted patients (optional - for admin purposes)
+exports.getDeletedPatients = async (req, res) => {
+  try {
+    const { hospitalId } = req.params;
+
+    const deletedPatients = await Patient.findAll({
+      where: { 
+        hospitalId,
+        isDeleted: true  // Only show deleted patients
+      },
+      include: [{ model: Hospital, as: 'hospital' }]
+    });
+
+    res.status(200).json(deletedPatients);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// 🔄 Restore a deleted patient (optional)
+exports.restorePatient = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const patient = await Patient.findOne({
+      where: {
+        id,
+        isDeleted: true  // Only restore deleted patients
+      }
+    });
+    
+    if (!patient) return res.status(404).json({ error: '❌ Deleted patient not found' });
+
+    await patient.update({ isDeleted: false });
+    
+    res.status(200).json({ 
+      message: '✅ Patient restored successfully',
+      patient
+    });
+  } catch (error) {
+    console.error('❌ Error restoring patient:', error);
     res.status(500).json({ error: error.message });
   }
 };

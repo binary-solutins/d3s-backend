@@ -6,9 +6,26 @@ exports.createPatient = async (req, res) => {
   try {
     const { firstName, lastName, age, weight, height, contact, gender, address, adharNumber, email, hospitalId } = req.body;
 
+    console.log('📥 Received request to create patient with data:', {
+      firstName,
+      lastName,
+      age,
+      weight,
+      height,
+      contact,
+      gender,
+      address,
+      adharNumber,
+      email,
+      hospitalId
+    });
+
     const hospital = await Hospital.findByPk(hospitalId);
     if (!hospital) {
-      console.error(`❌ Hospital not found with ID: ${hospitalId}`);
+      console.error(`❌ Hospital not found with ID: ${hospitalId}`, {
+        timestamp: new Date().toISOString(),
+        requestBody: req.body
+      });
       return res.status(404).json({ error: '❌ Hospital not found' });
     }
 
@@ -27,17 +44,33 @@ exports.createPatient = async (req, res) => {
       isDeleted: false
     });
     
-    console.log(`✅ Patient created successfully with ID: ${patient.id}`);
+    console.log(`✅ Patient created successfully with ID: ${patient.id}`, {
+      patientId: patient.id,
+      timestamp: new Date().toISOString(),
+      hospitalId: hospitalId
+    });
+    
     res.status(201).json(patient);
   } catch (error) {
     console.error('❌ Error creating patient:', {
+      timestamp: new Date().toISOString(),
       error: error.message,
       stack: error.stack,
-      requestBody: req.body
+      requestBody: req.body,
+      validationErrors: error.errors ? error.errors.map(err => ({
+        field: err.path,
+        message: err.message,
+        type: err.type
+      })) : null
     });
+    
     res.status(500).json({ 
       error: 'An error occurred while creating the patient',
-      details: error.message 
+      details: error.message,
+      validationErrors: error.errors ? error.errors.map(err => ({
+        field: err.path,
+        message: err.message
+      })) : null
     });
   }
 };

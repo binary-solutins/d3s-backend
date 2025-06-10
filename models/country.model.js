@@ -1,28 +1,37 @@
-// models/country.js
 module.exports = (sequelize, DataTypes) => {
-    const Country = sequelize.define('Country', {
-      name: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true
-      },
-      isoCode: {
-        type: DataTypes.STRING(3),
-        allowNull: false,
-        unique: true
-      },
-      phoneCode: {
-        type: DataTypes.STRING(5),
-        allowNull: false
-      }
+  const Country = sequelize.define('Country', {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    shortname: {
+      type: DataTypes.STRING(3),
+      allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING(150),
+      allowNull: false,
+    },
+    phonecode: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    }
+  }, {
+    tableName: 'countries',
+    timestamps: false,
+  });
+
+  Country.associate = (models) => {
+    Country.hasMany(models.State, {
+      foreignKey: 'country_id',
+      as: 'states',
     });
-  
-    Country.associate = (models) => {
-      Country.hasMany(models.State, {
-        foreignKey: 'countryId',
-        as: 'states'
-      });
-    };
-  
-    return Country;
+    Country.hasMany(models.City, {
+      foreignKey: 'country_id',
+      as: 'cities',
+    });
   };
+
+  return Country;
+};

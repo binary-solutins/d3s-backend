@@ -1,465 +1,476 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Breast Screening Report</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        @page {
-            size: A4;
-            margin: 0;
-        }
+      @page {
+        size: A4;
+        margin: 0;
+      }
 
-        body {
-            font-family: 'Roboto', Arial, sans-serif;
-            line-height: 1.4;
-            color: #333;
-            background-color: #fff;
-            font-size: 12px;
-            width: 21cm; /* A4 width */
-            height: 29.7cm; /* A4 height */
-            margin: 0 auto;
-            position: relative;
-        }
+      body {
+        font-family: "Roboto", Arial, sans-serif;
+        line-height: 1.4;
+        color: #333;
+        background-color: #fff;
+        font-size: 12px;
+        width: 21cm; /* A4 width */
+        height: 29.7cm; /* A4 height */
+        margin: 0 auto;
+        position: relative;
+        box-sizing: border-box;
+      }
 
-        .container {
-            width: 100%;
-            height: 100%;
-            margin: 0 auto;
-            padding: 0;
-            position: relative;
-        }
+      /* Alternative option - if you want the border on the container instead */
+      .container {
+        width: 100%;
+        height: 100%;
+        margin: 0 auto;
+        padding: 0;
+        position: relative;
+        border: 3px solid #ffc0cb; /* Light pink border */
+        border-radius: 10px;
+        box-sizing: border-box;
+      }
+      /* Header Section */
+      .header {
+        width: 100%;
+        padding: 15px 20px;
+        border-bottom: 1px solid #ddd;
+        display: block;
+      }
 
-        /* Header Section */
-        .header {
-            width: 100%;
-            padding: 15px 20px;
-            border-bottom: 1px solid #ddd;
-            display: block;
-        }
+      .header-inner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
 
-        .header-inner {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+      .logo {
+        width: 20%;
+      }
 
-        .logo {
-            width: 20%;
-        }
+      .logo h2 {
+        font-size: 26px;
+        font-weight: 700;
+        color: #000;
+        margin: 0;
+      }
 
-        .logo h2 {
-            font-size: 26px;
-            font-weight: 700;
-            color: #000;
-            margin: 0;
-        }
+      .scan-text {
+        color: #ff4081;
+      }
 
-        .scan-text {
-            color: #ff4081;
-        }
+      .title {
+        width: 60%;
+        text-align: center;
+      }
 
-        .title {
-            width: 60%;
-            text-align: center;
-        }
+      .title h1 {
+        font-size: 24px;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+        margin-top: 0;
+      }
 
-        .title h1 {
-            font-size: 24px;
-            font-weight: 700;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-            margin-top: 0;
-        }
+      .date {
+        font-size: 16px;
+        color: #555;
+        margin: 0;
+      }
 
-        .date {
-            font-size: 16px;
-            color: #555;
-            margin: 0;
-        }
+      .hospital-logo {
+        width: 20%;
+        text-align: right;
+      }
 
-        .hospital-logo {
-            width: 20%;
-            text-align: right;
-        }
+      .logo-container {
+        width: 40px;
+        height: 40px;
+        display: inline-block;
+      }
 
-        .logo-container {
-            width: 40px;
-            height: 40px;
-            display: inline-block;
-        }
+      .logo-container img {
+        width: 100%;
+        height: auto;
+      }
 
-        .logo-container img {
-            width: 100%;
-            height: auto;
-        }
+      /* Details Section */
+      .details-container {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        margin: 15px 0;
+        padding: 0 20px;
+      }
 
-        /* Details Section */
-        .details-container {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            margin: 15px 0;
-            padding: 0 20px;
-        }
+      .details-box {
+        width: 48%;
+        background-color: #fff0f5;
+        border-radius: 5px;
+        overflow: hidden;
+      }
 
-        .details-box {
-            width: 48%;
-            background-color: #FFF0F5;
-            border-radius: 5px;
-            overflow: hidden;
-        }
+      .details-header {
+        background-color: #000 !important;
+        padding: 10px 15px;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
 
-        .details-header {
-            background-color: #000 !important;
-            padding: 10px 15px;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
+      .details-header h3 {
+        color: #fff !important;
+        font-size: 18px;
+        font-weight: 500;
+        margin: 0;
+      }
 
-        .details-header h3 {
-            color: #fff !important;
-            font-size: 18px;
-            font-weight: 500;
-            margin: 0;
-        }
+      .details-content {
+        padding: 15px;
+      }
 
-        .details-content {
-            padding: 15px;
-        }
+      .detail-row {
+        margin-bottom: 8px;
+        display: flex;
+        flex-wrap: nowrap;
+      }
 
-        .detail-row {
-            margin-bottom: 8px;
-            display: flex;
-            flex-wrap: nowrap;
-        }
+      .detail-label {
+        min-width: 120px;
+        color: #555;
+        font-weight: 500;
+        display: inline-block;
+      }
 
-        .detail-label {
-            min-width: 120px;
-            color: #555;
-            font-weight: 500;
-            display: inline-block;
-        }
+      .detail-value {
+        color: #000;
+        font-weight: 400;
+        display: inline-block;
+      }
 
-        .detail-value {
-            color: #000;
-            font-weight: 400;
-            display: inline-block;
-        }
+      /* Screening Section */
+      .screening-section {
+        margin: 20px 0;
+        padding: 0 20px;
+        page-break-inside: avoid;
+      }
 
-        /* Screening Section */
-        .screening-section {
-            margin: 20px 0;
-            padding: 0 20px;
-            page-break-inside: avoid;
-        }
+      .screening-header {
+        display: flex;
+        align-items: center;
+        background-color: #fff;
+        border: 2px solid #ffb6c1;
+        border-radius: 25px;
+        padding: 8px 15px;
+        margin-bottom: 15px;
+        width: fit-content;
+      }
 
-        .screening-header {
-            display: flex;
-            align-items: center;
-            background-color: #fff;
-            border: 2px solid #FFB6C1;
-            border-radius: 25px;
-            padding: 8px 15px;
-            margin-bottom: 15px;
-            width: fit-content;
-        }
+      .breast-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-        .breast-icon {
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+      .breast-icon img {
+        width: 100%;
+        height: auto;
+      }
 
-        .breast-icon img {
-            width: 100%;
-            height: auto;
-        }
+      .screening-header h3 {
+        margin: 0;
+        padding-left: 10px;
+        color: #000;
+        font-size: 18px;
+        font-weight: 500;
+      }
 
-        .screening-header h3 {
-            margin: 0;
-            padding-left: 10px;
-            color: #000;
-            font-size: 18px;
-            font-weight: 500;
-        }
+      /* Images Grid */
+      .images-grid {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+      }
 
-        /* Images Grid */
-        .images-grid {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-        }
+      .image-column {
+        width: 32%;
+        text-align: center;
+      }
 
-        .image-column {
-            width: 32%;
-            text-align: center;
-        }
+      .image-column h4 {
+        margin-bottom: 10px;
+        font-size: 14px;
+      }
 
-        .image-column h4 {
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
+      .image-container {
+        width: 130px !important;
+        height: 130px !important;
+        display: inline-block;
+        border: 1px solid #ddd;
+        overflow: hidden;
+      }
 
-        .image-container {
-            width: 130px !important;
-            height: 130px !important;
-            display: inline-block;
-            border: 1px solid #ddd;
-            overflow: hidden;
-        }
+      .image-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
 
-        .image-container img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+      /* Remarks Section */
+      .remarks-section {
+        margin: 20px;
+        padding: 10px;
+      }
 
-        /* Remarks Section */
-        .remarks-section {
-            margin: 20px;
-            padding: 10px;
-        }
+      .remarks-section p {
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
 
-        .remarks-section p {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
+      .remarks-line {
+        height: 1px;
+        background-color: #ddd;
+        margin: 15px 0;
+      }
 
-        .remarks-line {
-            height: 1px;
-            background-color: #ddd;
-            margin: 15px 0;
-        }
+      /* Footer Section */
+      .footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        background-color: #fff0f5 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        padding: 10px 20px;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+      }
 
-        /* Footer Section */
-        .footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            background-color: #FFF0F5 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            padding: 10px 20px;
-            position: absolute;
-            bottom: 0;
-            left: 0;
-        }
+      .disclaimer {
+        width: 75%;
+        font-size: 12px;
+        line-height: 1.3;
+      }
 
-        .disclaimer {
-            width: 75%;
-            font-size: 12px;
-            line-height: 1.3;
-        }
+      .disclaimer-title {
+        font-weight: 700;
+        color: #800020;
+      }
 
-        .disclaimer-title {
-            font-weight: 700;
-            color: #800020;
-        }
+      .powered-by {
+        width: 25%;
+        text-align: right;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+      }
 
-        .powered-by {
-            width: 25%;
-            text-align: right;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-        }
+      .powered-by span {
+        margin-right: 10px;
+      }
 
-        .powered-by span {
-            margin-right: 10px;
-        }
+      .powered-logos {
+        display: inline-flex;
+        align-items: center;
+      }
 
-        .powered-logos {
-            display: inline-flex;
-            align-items: center;
-        }
+      .powered-logos img {
+        height: 25px;
+        width: auto;
+        margin-left: 10px;
+      }
 
-        .powered-logos img {
-            height: 25px;
-            width: auto;
-            margin-left: 10px;
-        }
-
-        /* Force background colors in print */
-        * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
-        }
+      /* Force background colors in print */
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <header class="header">
-            <div class="header-inner">
-                <div class="logo">
-                    <h2>BR - <span class="scan-text">Scan</span></h2>
-                </div>
-                <div class="title">
-                    <h1>{{title}}</h1>
-                    <p class="date">{{date}}</p>
-                </div>
-                <div class="hospital-logo">
-                    <div class="logo-container">
-                        <img src="{{hospitalLogo}}" alt="Hospital Logo">
-                    </div>
-                </div>
+      <header class="header">
+        <div class="header-inner">
+          <div class="logo">
+            <h2>BR - <span class="scan-text">Scan</span></h2>
+          </div>
+          <div class="title">
+            <h1>{{title}}</h1>
+            <p class="date">{{date}}</p>
+          </div>
+          <div class="hospital-logo">
+            <div class="logo-container">
+              <img src="{{hospitalLogo}}" alt="Hospital Logo" />
             </div>
-        </header>
+          </div>
+        </div>
+      </header>
 
-        <div class="details-container">
-            <div class="details-box">
-                <div class="details-header">
-                    <h3>Subject Details</h3>
-                </div>
-                <div class="details-content">
-                    <div class="detail-row">
-                        <div class="detail-label">Name:</div>
-                        <div class="detail-value">{{patient.firstName}} {{patient.lastName}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Address:</div>
-                        <div class="detail-value">{{patient.address}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Contact:</div>
-                        <div class="detail-value">{{patient.contact}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Gender:</div>
-                        <div class="detail-value">{{patient.gender}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Age:</div>
-                        <div class="detail-value">{{patient.age}} Years</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Weight:</div>
-                        <div class="detail-value">{{patient.weight}} kg</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Height:</div>
-                        <div class="detail-value">{{patient.height}}</div>
-                    </div>
-                </div>
+      <div class="details-container">
+        <div class="details-box">
+          <div class="details-header">
+            <h3>Subject Details</h3>
+          </div>
+          <div class="details-content">
+            <div class="detail-row">
+              <div class="detail-label">Name:</div>
+              <div class="detail-value">
+                {{patient.firstName}} {{patient.lastName}}
+              </div>
             </div>
-
-            <div class="details-box">
-                <div class="details-header">
-                    <h3>Examiner Details</h3>
-                </div>
-                <div class="details-content">
-                    <div class="detail-row">
-                        <div class="detail-label">Hospital Name:</div>
-                        <div class="detail-value">{{hospital.name}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Hospital Address:</div>
-                        <div class="detail-value">{{hospital.address}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Doctor Name:</div>
-                        <div class="detail-value">{{doctor.name}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Designation:</div>
-                        <div class="detail-value">{{doctor.specialization}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Screening Place:</div>
-                        <div class="detail-value">{{hospital.name}}</div>
-                    </div>
-                </div>
+            <div class="detail-row">
+              <div class="detail-label">Address:</div>
+              <div class="detail-value">{{patient.address}}</div>
             </div>
+            <div class="detail-row">
+              <div class="detail-label">Contact:</div>
+              <div class="detail-value">{{patient.contact}}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Gender:</div>
+              <div class="detail-value">{{patient.gender}}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Age:</div>
+              <div class="detail-value">{{patient.age}} Years</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Weight:</div>
+              <div class="detail-value">{{patient.weight}} kg</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Height:</div>
+              <div class="detail-value">{{patient.height}}</div>
+            </div>
+          </div>
         </div>
 
-        <div class="screening-section">
-            <div class="screening-header">
-                <div class="breast-icon">
-                    <img src="{{breastIcon}}" alt="Breast Icon">
-                </div>
-                <h3>Left Breast Screening Visuals</h3>
+        <div class="details-box">
+          <div class="details-header">
+            <h3>Examiner Details</h3>
+          </div>
+          <div class="details-content">
+            <div class="detail-row">
+              <div class="detail-label">Hospital Name:</div>
+              <div class="detail-value">{{hospital.name}}</div>
             </div>
-            <div class="images-grid">
-                <div class="image-column">
-                    <h4>I. Top Side Image</h4>
-                    <div class="image-container">
-                        <img src="{{leftTopImage}}" alt="Left Breast Top Side">
-                    </div>
-                </div>
-                <div class="image-column">
-                    <h4>II. Left Side Image</h4>
-                    <div class="image-container">
-                        <img src="{{leftCenterImage}}" alt="Left Breast Left Side">
-                    </div>
-                </div>
-                <div class="image-column">
-                    <h4>III. Right Side Image</h4>
-                    <div class="image-container">
-                        <img src="{{leftBottomImage}}" alt="Left Breast Right Side">
-                    </div>
-                </div>
+            <div class="detail-row">
+              <div class="detail-label">Hospital Address:</div>
+              <div class="detail-value">{{hospital.address}}</div>
             </div>
+            <div class="detail-row">
+              <div class="detail-label">Doctor Name:</div>
+              <div class="detail-value">{{doctor.name}}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Designation:</div>
+              <div class="detail-value">{{doctor.specialization}}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Screening Place:</div>
+              <div class="detail-value">{{hospital.name}}</div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div class="screening-section">
-            <div class="screening-header">
-                <div class="breast-icon">
-                    <img src="{{breastIcon}}" alt="Breast Icon">
-                </div>
-                <h3>Right Breast Screening Visuals</h3>
-            </div>
-            <div class="images-grid">
-                <div class="image-column">
-                    <h4>I. Top Side Image</h4>
-                    <div class="image-container">
-                        <img src="{{rightTopImage}}" alt="Right Breast Top Side">
-                    </div>
-                </div>
-                <div class="image-column">
-                    <h4>II. Left Side Image</h4>
-                    <div class="image-container">
-                        <img src="{{rightCenterImage}}" alt="Right Breast Left Side">
-                    </div>
-                </div>
-                <div class="image-column">
-                    <h4>III. Right Side Image</h4>
-                    <div class="image-container">
-                        <img src="{{rightBottomImage}}" alt="Right Breast Right Side">
-                    </div>
-                </div>
-            </div>
+      <div class="screening-section">
+        <div class="screening-header">
+          <div class="breast-icon">
+            <img src="{{breastIcon}}" alt="Breast Icon" />
+          </div>
+          <h3>Left Breast Screening Visuals</h3>
         </div>
-
-        <div class="remarks-section">
-            <p>Remarks:</p>
-            <div class="remarks-line"></div>
-            <div class="remarks-line"></div>
+        <div class="images-grid">
+          <div class="image-column">
+            <h4>I. Top Side Image</h4>
+            <div class="image-container">
+              <img src="{{leftTopImage}}" alt="Left Breast Top Side" />
+            </div>
+          </div>
+          <div class="image-column">
+            <h4>II. Left Side Image</h4>
+            <div class="image-container">
+              <img src="{{leftCenterImage}}" alt="Left Breast Left Side" />
+            </div>
+          </div>
+          <div class="image-column">
+            <h4>III. Right Side Image</h4>
+            <div class="image-container">
+              <img src="{{leftBottomImage}}" alt="Left Breast Right Side" />
+            </div>
+          </div>
         </div>
+      </div>
 
-        <footer class="footer">
-            <div class="disclaimer">
-                <span class="disclaimer-title">Disclaimer:</span> The Breast screening report we provide is based on what we can see in the images. It
-                might change over time, depending on how the pictures are taken and how well we can see. To get a
-                proper diagnosis and more screening, please talk to your doctor, gynecologist, consultant, or oncologist.
+      <div class="screening-section">
+        <div class="screening-header">
+          <div class="breast-icon">
+            <img src="{{breastIcon}}" alt="Breast Icon" />
+          </div>
+          <h3>Right Breast Screening Visuals</h3>
+        </div>
+        <div class="images-grid">
+          <div class="image-column">
+            <h4>I. Top Side Image</h4>
+            <div class="image-container">
+              <img src="{{rightTopImage}}" alt="Right Breast Top Side" />
             </div>
-            <div class="powered-by">
-                <span>Powered By</span>
-                <div class="powered-logos">
-                    <img src="{{awsLogo}}" alt="AWS">
-                </div>
+          </div>
+          <div class="image-column">
+            <h4>II. Left Side Image</h4>
+            <div class="image-container">
+              <img src="{{rightCenterImage}}" alt="Right Breast Left Side" />
             </div>
-        </footer>
+          </div>
+          <div class="image-column">
+            <h4>III. Right Side Image</h4>
+            <div class="image-container">
+              <img src="{{rightBottomImage}}" alt="Right Breast Right Side" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="remarks-section">
+        <p>Remarks:</p>
+        <div class="remarks-line"></div>
+        <div class="remarks-line"></div>
+      </div>
+
+      <footer class="footer">
+        <div class="disclaimer">
+          <span class="disclaimer-title">Disclaimer:</span> The Breast screening
+          report we provide is based on what we can see in the images. It might
+          change over time, depending on how the pictures are taken and how well
+          we can see. To get a proper diagnosis and more screening, please talk
+          to your doctor, gynecologist, consultant, or oncologist.
+        </div>
+        <div class="powered-by">
+          <span>Powered By</span>
+          <div class="powered-logos">
+            <img src="{{awsLogo}}" alt="AWS" />
+          </div>
+        </div>
+      </footer>
     </div>
-</body>
+  </body>
 </html>

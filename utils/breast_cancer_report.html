@@ -38,9 +38,9 @@
         width: 100%;
         height: 100%;
         margin: 0 auto;
-        padding: 0;
+        padding: 10px;
         position: relative;
-        border: 3px solid #ffc0cb; /* Light pink border */
+        border: 3px solid #f78699; /* Light pink border */
         border-radius: 10px;
         box-sizing: border-box;
       }
@@ -166,6 +166,8 @@
         margin: 20px 0;
         padding: 0 20px;
         page-break-inside: avoid;
+      	
+      
       }
 
       .screening-header {
@@ -177,6 +179,7 @@
         padding: 8px 15px;
         margin-bottom: 15px;
         width: fit-content;
+      
       }
 
       .breast-icon {
@@ -261,6 +264,11 @@
         position: absolute;
         bottom: 0;
         left: 0;
+      }
+      .center{
+      display:flex;
+      justify-content:center;
+      align-items:center;
       }
 
       .disclaimer {
@@ -393,11 +401,14 @@
       </div>
 
       <div class="screening-section">
+           <div class="center">
         <div class="screening-header">
+       
           <div class="breast-icon">
             <img src="{{breastIcon}}" alt="Breast Icon" />
           </div>
           <h3>Left Breast Screening Visuals</h3>
+            </div>
         </div>
         <div class="images-grid">
           <div class="image-column">
@@ -422,11 +433,13 @@
       </div>
 
       <div class="screening-section">
+        <div class="center">
         <div class="screening-header">
           <div class="breast-icon">
             <img src="{{breastIcon}}" alt="Breast Icon" />
           </div>
           <h3>Right Breast Screening Visuals</h3>
+        </div>
         </div>
         <div class="images-grid">
           <div class="image-column">

@@ -356,8 +356,12 @@ function getReportTemplate() {
             width: 100%;
             height: 100%;
             margin: 0 auto;
-            padding: 0;
+            padding: 15px; /* Added padding for border space */
             position: relative;
+            border: 3px solid #FFB6C1; /* Pink border around entire report */
+            border-radius: 8px;
+            box-sizing: border-box;
+            background-color: #fff;
         }
 
         /* Header Section */
@@ -370,7 +374,7 @@ function getReportTemplate() {
 
         .header-inner {
             display: flex;
-            justify-content:space-between;
+            justify-content: space-between;
             align-items: center;
         }
 
@@ -390,7 +394,6 @@ function getReportTemplate() {
         }
 
         .title {
-           
             text-align: center;
         }
 
@@ -417,14 +420,13 @@ function getReportTemplate() {
             height: 100px;
             display: inline-block;
         }
-            
 
         .logo-container img {
             width: 100%;
             height: auto;
         }
         
-         .main-logo {
+        .main-logo {
             text-align: right;
         }
 
@@ -434,7 +436,6 @@ function getReportTemplate() {
             display: flex;
             align-items: center;
         }
-            
 
         .main-logo-container img {
             width: 100%;
@@ -566,24 +567,23 @@ function getReportTemplate() {
 
         /* Remarks Section */
         .remarks-section {
-            
             padding: 10px;
         }
-        
 
         .mainlogo {
-        margin-top:15px;
+            margin-top: 15px;
         }
 
         .remarks-section p {
             font-weight: bold;
             margin-bottom: 5px;
         }
+
         .center {
-          display: flex;
-          margin-bottom: 20px;
-          justify-content: center;
-          align-items: center;
+            display: flex;
+            margin-bottom: 20px;
+            justify-content: center;
+            align-items: center;
         }
 
         .remarks-line {
@@ -597,14 +597,14 @@ function getReportTemplate() {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            width: 100%;
+            width: calc(100% - 40px); /* Adjusted for container padding */
             background-color: #FFF0F5 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             padding: 10px 20px;
             position: absolute;
-            bottom: 100;
-            left: 0;
+            bottom: 30px; /* Adjusted to accommodate border */
+            left: 35px; /* Adjusted for container padding */
         }
 
         .disclaimer {
@@ -646,6 +646,16 @@ function getReportTemplate() {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
+        }
+
+        /* Additional pink border emphasis for PDF generation */
+        @media print {
+            .container {
+                border: 4px solid #FFB6C1 !important;
+                border-radius: 8px !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
         }
     </style>
 </head>

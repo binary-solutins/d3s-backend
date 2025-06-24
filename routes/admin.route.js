@@ -116,6 +116,7 @@ router.post('/forgot-password', adminController.forgotPassword);
 router.post('/reset-password', adminController.resetPassword);
 
 
+
 /**
  * @swagger
  * /api/admin/hospitals:

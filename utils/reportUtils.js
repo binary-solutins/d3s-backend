@@ -1,12 +1,12 @@
 const fs = require('fs');
 const path = require('path');
-const jsPDF = require('jspdf');
-require('jspdf-html2canvas');
+const htmlPdf = require('html-pdf-node');
+const Handlebars = require('handlebars');
 const sharp = require('sharp');
 const axios = require('axios');
 
 /**
- * Generate a PDF breast screening report using jsPDF with dynamic data
+ * Generate a PDF breast screening report using HTML template with dynamic data
  * @param {Object} reportData - The report data containing all information
  * @returns {Promise<Buffer>} - The generated PDF as a buffer
  */
@@ -15,6 +15,9 @@ const generateBreastCancerReport = async (reportData) => {
     try {
       // Extract the data
       const { patient, doctor, hospital, images, title } = reportData;
+
+      // Load the HTML template
+      const templateHtml = getReportTemplate();
 
       // Process images
       const processedImages = await processImages(images);
@@ -30,116 +33,75 @@ const generateBreastCancerReport = async (reportData) => {
       const currentDate = new Date();
       const formattedDate = formatDate(currentDate);
       
-      // Create PDF using jsPDF
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      // Set up page dimensions
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 15;
-      const contentWidth = pageWidth - (margin * 2);
-
-      // Add pink border around the entire page
-      doc.setDrawColor(255, 182, 193); // Pink color
-      doc.setLineWidth(1.5);
-      doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
-
-      // Header Section
-      let yPosition = 25;
+      // Prepare data for the template
+      const templateData = {
+        title: title || "BREAST SCREENING REPORT",
+        date: formattedDate,
+        
+        // Patient details with fallbacks
+        patient: {
+          firstName: patient?.firstName || "Unknown",
+          lastName: patient?.lastName || "",
+          address: patient?.address || "Not specified",
+          contact: patient?.contact || "Not provided",
+          gender: patient?.gender || "Not specified",
+          age: patient?.age || "N/A",
+          weight: patient?.weight || "N/A",
+          height: patient?.height || "N/A"
+        },
+        
+        // Doctor details with fallbacks
+        doctor: {
+          name: doctor?.name || (doctor?.firstName && doctor?.lastName ? 
+            `${doctor.firstName} ${doctor.lastName}` : "Unknown Doctor"),
+          specialization: doctor?.specialization || "General Practitioner"
+        },
+        
+        // Hospital details with fallbacks
+        hospital: {
+          name: hospital?.name || "Unknown Hospital",
+          address: hospital?.address || "Address not provided"
+        },
+        
+        // Images converted to data URLs
+        breastIcon: breastIcon,
+        hospitalLogo: hospitalLogo,
+        awsLogo: awsLogo,
+        
+        // Breast images
+        leftTopImage: processedImages.leftTopImage || createPlaceholderImage('Left Top'),
+        leftCenterImage: processedImages.leftCenterImage || createPlaceholderImage('Left Center'),
+        leftBottomImage: processedImages.leftBottomImage || createPlaceholderImage('Left Bottom'),
+        rightTopImage: processedImages.rightTopImage || createPlaceholderImage('Right Top'),
+        rightCenterImage: processedImages.rightCenterImage || createPlaceholderImage('Right Center'),
+        rightBottomImage: processedImages.rightBottomImage || createPlaceholderImage('Right Bottom')
+      };
       
-      // Add main logo (left)
-      try {
-        const mainLogoResponse = await axios.get('https://fra.cloud.appwrite.io/v1/storage/buckets/681a95120019afd4e319/files/685b238500142409a042/view?project=681a94cb0031df448ed3&', { responseType: 'arraybuffer' });
-        const mainLogoBuffer = await sharp(mainLogoResponse.data)
-          .resize(40, 30, { fit: 'contain' })
-          .png()
-          .toBuffer();
-        const mainLogoDataUrl = `data:image/png;base64,${mainLogoBuffer.toString('base64')}`;
-        doc.addImage(mainLogoDataUrl, 'PNG', margin, yPosition - 5, 40, 30);
-      } catch (error) {
-        console.warn('Could not load main logo, using fallback');
-      }
-
-      // Title (center)
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      const titleText = title || "BREAST SCREENING REPORT";
-      const titleWidth = doc.getTextWidth(titleText);
-      doc.text(titleText, (pageWidth - titleWidth) / 2, yPosition + 5);
-
-      // Date
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      const dateWidth = doc.getTextWidth(formattedDate);
-      doc.text(formattedDate, (pageWidth - dateWidth) / 2, yPosition + 15);
-
-      // Hospital logo (right)
-      if (hospitalLogo) {
-        const logoBuffer = Buffer.from(hospitalLogo.split(',')[1], 'base64');
-        doc.addImage(hospitalLogo, 'PNG', pageWidth - margin - 25, yPosition - 5, 25, 25);
-      }
-
-      yPosition += 40;
-
-      // Draw separator line
-      doc.setDrawColor(221, 221, 221);
-      doc.setLineWidth(0.5);
-      doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 10;
-
-      // Details Section
-      await addDetailsSection(doc, patient, doctor, hospital, margin, yPosition, contentWidth);
-      yPosition += 80;
-
-      // Left Breast Screening Section
-      yPosition = await addBreastScreeningSection(
-        doc, 
-        'Left Breast Screening Visuals', 
-        processedImages.leftTopImage, 
-        processedImages.leftCenterImage, 
-        processedImages.leftBottomImage,
-        breastIcon,
-        margin, 
-        yPosition, 
-        contentWidth
-      );
-
-      yPosition += 20;
-
-      // Right Breast Screening Section
-      yPosition = await addBreastScreeningSection(
-        doc, 
-        'Right Breast Screening Visuals', 
-        processedImages.rightTopImage, 
-        processedImages.rightCenterImage, 
-        processedImages.rightBottomImage,
-        breastIcon,
-        margin, 
-        yPosition, 
-        contentWidth
-      );
-
-      // Add remarks section
-      yPosition += 20;
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Remarks:', margin, yPosition);
+      // Compile the template with Handlebars
+      const template = Handlebars.compile(templateHtml);
+      const html = template(templateData);
       
-      // Add lines for remarks
-      doc.setDrawColor(221, 221, 221);
-      doc.line(margin, yPosition + 10, pageWidth - margin, yPosition + 10);
-      doc.line(margin, yPosition + 20, pageWidth - margin, yPosition + 20);
-
-      // Footer
-      await addFooter(doc, pageWidth, pageHeight, margin);
-
-      // Convert to buffer
-      const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
-      resolve(pdfBuffer);
+      const options = {
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: '10mm',
+          right: '10mm',
+          bottom: '10mm',
+          left: '10mm'
+        },
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      };
+      
+      // Generate PDF from HTML
+      htmlPdf.generatePdf({ content: html }, options)
+        .then(pdfBuffer => {
+          resolve(pdfBuffer);
+        })
+        .catch(error => {
+          console.error('Error generating PDF:', error);
+          reject(error);
+        });
       
     } catch (error) {
       console.error('Error preparing PDF data:', error);
@@ -147,197 +109,6 @@ const generateBreastCancerReport = async (reportData) => {
     }
   });
 };
-
-/**
- * Add details section to PDF
- */
-async function addDetailsSection(doc, patient, doctor, hospital, margin, yPosition, contentWidth) {
-  const boxWidth = (contentWidth - 10) / 2;
-  const boxHeight = 65;
-
-  // Subject Details Box
-  doc.setFillColor(255, 240, 245); // Light pink background
-  doc.rect(margin, yPosition, boxWidth, boxHeight, 'F');
-  
-  // Subject Details Header
-  doc.setFillColor(0, 0, 0); // Black header
-  doc.rect(margin, yPosition, boxWidth, 12, 'F');
-  
-  doc.setTextColor(255, 255, 255); // White text
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Subject Details', margin + 5, yPosition + 8);
-
-  // Subject Details Content
-  doc.setTextColor(0, 0, 0); // Black text
-  doc.setFontSize(10);
-  let detailY = yPosition + 20;
-  const lineHeight = 7;
-
-  const subjectDetails = [
-    `Name: ${patient?.firstName || 'Unknown'} ${patient?.lastName || ''}`,
-    `Address: ${patient?.address || 'Not specified'}`,
-    `Contact: ${patient?.contact || 'Not provided'}`,
-    `Gender: ${patient?.gender || 'Not specified'}`,
-    `Age: ${patient?.age || 'N/A'} Years`,
-    `Weight: ${patient?.weight || 'N/A'} kg`,
-    `Height: ${patient?.height || 'N/A'}`
-  ];
-
-  subjectDetails.forEach(detail => {
-    doc.text(detail, margin + 5, detailY);
-    detailY += lineHeight;
-  });
-
-  // Examiner Details Box
-  const examinerX = margin + boxWidth + 10;
-  doc.setFillColor(255, 240, 245); // Light pink background
-  doc.rect(examinerX, yPosition, boxWidth, boxHeight, 'F');
-  
-  // Examiner Details Header
-  doc.setFillColor(0, 0, 0); // Black header
-  doc.rect(examinerX, yPosition, boxWidth, 12, 'F');
-  
-  doc.setTextColor(255, 255, 255); // White text
-  doc.setFontSize(12);
-  doc.text('Examiner Details', examinerX + 5, yPosition + 8);
-
-  // Examiner Details Content
-  doc.setTextColor(0, 0, 0); // Black text
-  doc.setFontSize(10);
-  detailY = yPosition + 20;
-
-  const examinerDetails = [
-    `Hospital Name: ${hospital?.name || 'Unknown Hospital'}`,
-    `Hospital Address: ${hospital?.address || 'Address not provided'}`,
-    `Doctor Name: ${doctor?.name || (doctor?.firstName && doctor?.lastName ? `${doctor.firstName} ${doctor.lastName}` : 'Unknown Doctor')}`,
-    `Designation: ${doctor?.specialization || 'General Practitioner'}`,
-    `Screening Place: ${hospital?.name || 'Unknown Hospital'}`
-  ];
-
-  examinerDetails.forEach(detail => {
-    doc.text(detail, examinerX + 5, detailY);
-    detailY += lineHeight;
-  });
-}
-
-/**
- * Add breast screening section to PDF
- */
-async function addBreastScreeningSection(doc, title, topImage, centerImage, bottomImage, breastIcon, margin, yPosition, contentWidth) {
-  // Section header with breast icon
-  doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(255, 182, 193);
-  doc.setLineWidth(1);
-  doc.roundedRect(margin + 50, yPosition, 120, 15, 7, 7, 'FD');
-
-  // Add breast icon
-  if (breastIcon) {
-    const iconBuffer = Buffer.from(breastIcon.split(',')[1], 'base64');
-    doc.addImage(breastIcon, 'SVG', margin + 55, yPosition + 2, 10, 10);
-  }
-
-  // Section title
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
-  doc.text(title, margin + 70, yPosition + 10);
-
-  yPosition += 25;
-
-  // Images grid
-  const imageWidth = 35;
-  const imageHeight = 35;
-  const imageSpacing = (contentWidth - (imageWidth * 3)) / 2;
-
-  const images = [
-    { img: topImage, label: 'I. Top Side Image' },
-    { img: centerImage, label: 'II. Left Side Image' },
-    { img: bottomImage, label: 'III. Right Side Image' }
-  ];
-
-  let xPosition = margin;
-
-  for (let i = 0; i < images.length; i++) {
-    const image = images[i];
-    
-    // Image label
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const labelWidth = doc.getTextWidth(image.label);
-    doc.text(image.label, xPosition + (imageWidth - labelWidth) / 2, yPosition);
-
-    // Image container border
-    doc.setDrawColor(221, 221, 221);
-    doc.setLineWidth(0.5);
-    doc.rect(xPosition, yPosition + 5, imageWidth, imageHeight);
-
-    // Add image
-    if (image.img) {
-      try {
-        doc.addImage(image.img, 'JPEG', xPosition + 1, yPosition + 6, imageWidth - 2, imageHeight - 2);
-      } catch (error) {
-        // If image fails to load, add placeholder text
-        doc.setFontSize(8);
-        doc.text('Image\nMissing', xPosition + imageWidth/2 - 8, yPosition + imageHeight/2);
-      }
-    }
-
-    xPosition += imageWidth + imageSpacing;
-  }
-
-  return yPosition + imageHeight + 15;
-}
-
-/**
- * Add footer to PDF
- */
-async function addFooter(doc, pageWidth, pageHeight, margin) {
-  const footerY = pageHeight - 35;
-  const footerHeight = 20;
-
-  // Footer background
-  doc.setFillColor(255, 240, 245);
-  doc.rect(margin, footerY, pageWidth - (margin * 2), footerHeight, 'F');
-
-  // Disclaimer
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Disclaimer:', margin + 5, footerY + 8);
-  
-  doc.setFont('helvetica', 'normal');
-  const disclaimerText = 'The Breast screening report we provide is based on what we can see in the images. It might change over time, depending on how the pictures are taken and how well we can see.';
-  const splitDisclaimer = doc.splitTextToSize(disclaimerText, 120);
-  doc.text(splitDisclaimer, margin + 25, footerY + 8);
-
-  // Powered by section
-  doc.setFontSize(9);
-  doc.text('Powered By', pageWidth - margin - 60, footerY + 8);
-
-  // Add logos
-  try {
-    // Azure logo
-    const azureLogoResponse = await axios.get('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLDJHCPEwjND1n8zRkZij43mASb-r5NFAh5A&s', { responseType: 'arraybuffer' });
-    const azureLogoBuffer = await sharp(azureLogoResponse.data)
-      .resize(15, 10, { fit: 'contain' })
-      .png()
-      .toBuffer();
-    const azureLogoDataUrl = `data:image/png;base64,${azureLogoBuffer.toString('base64')}`;
-    doc.addImage(azureLogoDataUrl, 'PNG', pageWidth - margin - 40, footerY + 3, 15, 10);
-
-    // D3S logo
-    const d3sLogoResponse = await axios.get('https://static.wixstatic.com/media/048d7e_644b43b18e8347d6b2b4c65943725115~mv2.png/v1/fill/w_554,h_166,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/D3S%20Healthcare%20Logo.png', { responseType: 'arraybuffer' });
-    const d3sLogoBuffer = await sharp(d3sLogoResponse.data)
-      .resize(20, 10, { fit: 'contain' })
-      .png()
-      .toBuffer();
-    const d3sLogoDataUrl = `data:image/png;base64,${d3sLogoBuffer.toString('base64')}`;
-    doc.addImage(d3sLogoDataUrl, 'PNG', pageWidth - margin - 20, footerY + 3, 20, 10);
-  } catch (error) {
-    console.warn('Could not load footer logos');
-  }
-}
 
 /**
  * Process all images
@@ -545,8 +316,527 @@ function formatDate(date) {
   return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm} UTC`;
 }
 
+
+/**
+ * Get the HTML template for the report
+ * @returns {string} - The HTML template string
+ */
+function getReportTemplate() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breast Screening Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            line-height: 1.4;
+            color: #333;
+            background-color: #fff;
+            font-size: 12px;
+            width: 21cm; /* A4 width */
+            height: 32.7cm; /* A4 height */
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .container {
+            width: 100%;
+            height: 100%;
+            margin: 0 auto;
+            padding: 15px; /* Added padding for border space */
+            position: relative;
+            border: 3px solid #FFB6C1; /* Pink border around entire report */
+            border-radius: 8px;
+            box-sizing: border-box;
+            background-color: #fff;
+        }
+
+        /* Header Section */
+        .header {
+            width: 100%;
+            padding: 15px 20px;
+            border-bottom: 1px solid #ddd;
+            display: block;
+        }
+
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            width: 20%;
+        }
+
+        .logo h2 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #000;
+            margin: 0;
+        }
+
+        .scan-text {
+            color: #ff4081;
+        }
+
+        .title {
+            text-align: center;
+        }
+
+        .title h1 {
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            margin-top: 0;
+        }
+
+        .date {
+            font-size: 16px;
+            color: #555;
+            margin: 0;
+        }
+
+        .hospital-logo {
+            text-align: right;
+        }
+
+        .logo-container {
+            width: 100px;
+            height: 100px;
+            display: inline-block;
+        }
+
+        .logo-container img {
+            width: 100%;
+            height: auto;
+        }
+        
+        .main-logo {
+            text-align: right;
+        }
+
+        .main-logo-container {
+            width: 150px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+        }
+
+        .main-logo-container img {
+            width: 100%;
+            height: auto;
+        }
+
+        /* Details Section */
+        .details-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin: 15px 0;
+            padding: 0 20px;
+        }
+
+        .details-box {
+            width: 48%;
+            background-color: #FFF0F5;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .details-header {
+            background-color: #000 !important;
+            padding: 10px 15px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .details-header h3 {
+            color: #fff !important;
+            font-size: 18px;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .details-content {
+            padding: 15px;
+        }
+
+        .detail-row {
+            margin-bottom: 8px;
+            display: flex;
+            flex-wrap: nowrap;
+        }
+
+        .detail-label {
+            min-width: 120px;
+            color: #555;
+            font-weight: 500;
+            display: inline-block;
+        }
+
+        .detail-value {
+            color: #000;
+            font-weight: 400;
+            display: inline-block;
+        }
+
+        /* Screening Section */
+        .screening-section {
+            margin: 20px 0;
+            padding: 0 20px;
+            page-break-inside: avoid;
+        }
+
+        .screening-header {
+            display: flex;
+            align-items: center;
+            background-color: #fff;
+            border: 2px solid #FFB6C1;
+            border-radius: 25px;
+            padding: 8px 15px;
+            margin-bottom: 15px;
+            width: fit-content;
+        }
+
+        .breast-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .breast-icon img {
+            width: 100%;
+            height: auto;
+        }
+
+        .screening-header h3 {
+            margin: 0;
+            padding-left: 10px;
+            color: #000;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        /* Images Grid */
+        .images-grid {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .image-column {
+            width: 32%;
+            text-align: center;
+        }
+
+        .image-column h4 {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .image-container {
+            width: 150px !important;
+            height: 150px !important;
+            display: inline-block;
+            border: 1px solid #ddd;
+            overflow: hidden;
+        }
+
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Remarks Section */
+        .remarks-section {
+            padding: 10px;
+        }
+
+        .mainlogo {
+            margin-top: 15px;
+        }
+
+        .remarks-section p {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .center {
+            display: flex;
+            margin-bottom: 20px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .remarks-line {
+            height: 1px;
+            background-color: #ddd;
+            margin: 15px 0;
+        }
+
+        /* Footer Section */
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: calc(100% - 40px); /* Adjusted for container padding */
+            background-color: #FFF0F5 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            padding: 10px 20px;
+            position: absolute;
+            bottom: 30px; /* Adjusted to accommodate border */
+            left: 35px; /* Adjusted for container padding */
+        }
+
+        .disclaimer {
+            width: 70%;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        .disclaimer-title {
+            font-weight: 700;
+            color: #800020;
+        }
+
+        .powered-by {
+            width: 25%;
+            text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .powered-by span {
+            margin-right: 10px;
+        }
+
+        .powered-logos {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .powered-logos img {
+            height: 25px;
+            width: auto;
+            margin-left: 10px;
+        }
+
+        /* Force background colors in print */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
+        /* Additional pink border emphasis for PDF generation */
+        @media print {
+            .container {
+                border: 4px solid #FFB6C1 !important;
+                border-radius: 8px !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-inner">
+               <div class="main-logo">
+                    <div class="main-logo-container mainlogo">
+                        <img src="https://fra.cloud.appwrite.io/v1/storage/buckets/681a95120019afd4e319/files/685b238500142409a042/view?project=681a94cb0031df448ed3&" alt="Hospital Logo">
+                    </div>
+                </div>
+                <div class="title">
+                    <h1>{{title}}</h1>
+                    <p class="date">{{date}}</p>
+                </div>
+                <div class="hospital-logo">
+                    <div class="logo-container">
+                        <img src="{{hospitalLogo}}" alt="Hospital Logo">
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="details-container">
+            <div class="details-box">
+                <div class="details-header">
+                    <h3>Subject Details</h3>
+                </div>
+                <div class="details-content">
+                    <div class="detail-row">
+                        <div class="detail-label">Name:</div>
+                        <div class="detail-value">{{patient.firstName}} {{patient.lastName}}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Address:</div>
+                        <div class="detail-value">{{patient.address}}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Contact:</div>
+                        <div class="detail-value">{{patient.contact}}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Gender:</div>
+                        <div class="detail-value">{{patient.gender}}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Age:</div>
+                        <div class="detail-value">{{patient.age}} Years</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Weight:</div>
+                        <div class="detail-value">{{patient.weight}} kg</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Height:</div>
+                        <div class="detail-value">{{patient.height}}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="details-box">
+                <div class="details-header">
+                    <h3>Examiner Details</h3>
+                </div>
+                <div class="details-content">
+                    <div class="detail-row">
+                        <div class="detail-label">Hospital Name:</div>
+                        <div class="detail-value">{{hospital.name}}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Hospital Address:</div>
+                        <div class="detail-value">{{hospital.address}}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Doctor Name:</div>
+                        <div class="detail-value">{{doctor.name}}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Designation:</div>
+                        <div class="detail-value">{{doctor.specialization}}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Screening Place:</div>
+                        <div class="detail-value">{{hospital.name}}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="screening-section">
+          <div class="center">
+            <div class="screening-header">
+                <div class="breast-icon">
+                    <img src="{{breastIcon}}" alt="Breast Icon">
+                </div>
+                <h3>Left Breast Screening Visuals</h3>
+            </div>
+            </div>
+            <div class="images-grid">
+                <div class="image-column">
+                    <h4>I. Top Side Image</h4>
+                    <div class="image-container">
+                        <img src="{{leftTopImage}}" alt="Left Breast Top Side">
+                    </div>
+                </div>
+                <div class="image-column">
+                    <h4>II. Left Side Image</h4>
+                    <div class="image-container">
+                        <img src="{{leftCenterImage}}" alt="Left Breast Left Side">
+                    </div>
+                </div>
+                <div class="image-column">
+                    <h4>III. Right Side Image</h4>
+                    <div class="image-container">
+                        <img src="{{leftBottomImage}}" alt="Left Breast Right Side">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="screening-section">
+            <div class="center">
+            <div class="screening-header">
+              
+                <div class="breast-icon">
+                    <img src="{{breastIcon}}" alt="Breast Icon">
+                </div>
+                <h3>Right Breast Screening Visuals</h3>
+            </div>
+            </div>
+            <div class="images-grid">
+                <div class="image-column">
+                    <h4>I. Top Side Image</h4>
+                    <div class="image-container">
+                        <img src="{{rightTopImage}}" alt="Right Breast Top Side">
+                    </div>
+                </div>
+                <div class="image-column">
+                    <h4>II. Left Side Image</h4>
+                    <div class="image-container">
+                        <img src="{{rightCenterImage}}" alt="Right Breast Left Side">
+                    </div>
+                </div>
+                <div class="image-column">
+                    <h4>III. Right Side Image</h4>
+                    <div class="image-container">
+                        <img src="{{rightBottomImage}}" alt="Right Breast Right Side">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="remarks-section">
+            <p>Remarks:</p>
+            <div class="remarks-line"></div>
+            <div class="remarks-line"></div>
+        </div>
+
+        <footer class="footer">
+            <div class="disclaimer">
+                <span class="disclaimer-title">Disclaimer:</span> The Breast screening report we provide is based on what we can see in the images. It
+                might change over time, depending on how the pictures are taken and how well we can see.
+            </div>
+            <div class="powered-by">
+                <span>Powered By</span>
+                <div class="powered-logos">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLDJHCPEwjND1n8zRkZij43mASb-r5NFAh5A&s" alt="azure">
+                    <img src="https://static.wixstatic.com/media/048d7e_644b43b18e8347d6b2b4c65943725115~mv2.png/v1/fill/w_554,h_166,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/D3S%20Healthcare%20Logo.png" alt="d3s">
+                </div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>`;
+}
+
+
 // Export functions
 module.exports = { 
   generateBreastCancerReport,
-  formatDate
+  formatDate,
+  getReportTemplate
 };

@@ -42,6 +42,11 @@ const swaggerOptions = {
         url: 'https://d3s-backend-dva9.onrender.com',
         description: '🌐 Testing server',
       },
+      {
+        url: 'https://d3s-backend-hwbxccckgcdbdgfr.centralindia-01.azurewebsites.net',
+        description: '🌐 Production server',
+      },
+
     ],
     components: {
       securitySchemes: {

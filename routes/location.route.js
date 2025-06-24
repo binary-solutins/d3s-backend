@@ -9,6 +9,7 @@ const locationController = require('../controllers/location.controller');
  *   description: Geographic location management
  */
 
+
 /**
  * @swagger
  * /api/countries:

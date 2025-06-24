@@ -347,7 +347,7 @@ function getReportTemplate() {
             background-color: #fff;
             font-size: 12px;
             width: 21cm; /* A4 width */
-            height: 29.7cm; /* A4 height */
+            height: 32.7cm; /* A4 height */
             margin: 0 auto;
             position: relative;
         }
@@ -665,7 +665,7 @@ function getReportTemplate() {
             <div class="header-inner">
                <div class="main-logo">
                     <div class="main-logo-container mainlogo">
-                        <img src="https://i.postimg.cc/wTXh5yJy/logo.jpg" alt="Hospital Logo">
+                        <img src="https://fra.cloud.appwrite.io/v1/storage/buckets/681a95120019afd4e319/files/685b238500142409a042/view?project=681a94cb0031df448ed3&" alt="Hospital Logo">
                     </div>
                 </div>
                 <div class="title">

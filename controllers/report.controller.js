@@ -4,26 +4,33 @@ const db = require('../models');
 const Report = db.Report;
 const Patient = db.Patient;
 const Doctor = db.Doctor;
-const Hospital= db.Hospital
+const Hospital = db.Hospital;
 const { generateBreastCancerReport } = require('../utils/reportUtils');
 const { Op } = require('sequelize');
 const https = require('https');
 const fs = require('fs');
 const PDFDocument = require('pdfkit');
-const axios = require('axios');
-const FormData = require('form-data');
 const { v4: uuidv4 } = require('uuid');
 
-// Configure multer for memory storage
+// Azure Blob Storage imports
+const { BlobServiceClient } = require('@azure/storage-blob');
+
+// Initialize Azure Blob Service Client
+const blobServiceClient = BlobServiceClient.fromConnectionString(
+  process.env.AZURE_STORAGE_CONNECTION_STRING
+);
+const containerName = 'reports';
+
+// Configure multer for memory storage with high-quality settings
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 15 * 1024 * 1024, // limit to 15MB
+    fileSize: 50 * 1024 * 1024, // Increased to 50MB for high-quality images
   },
   fileFilter: (req, file, cb) => {
-    // Allow common document and image file types
-    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx|txt|csv|dicom/;
+    // Allow common document and image file types with focus on high-quality formats
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx|txt|csv|dicom|tiff|tif|bmp|webp/;
     const mimetype = allowedTypes.test(file.mimetype);
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     
@@ -34,41 +41,64 @@ const upload = multer({
   }
 });
 
-// Helper function to upload file to Appwrite
-const uploadToAppwrite = async (file, patientId, fileType) => {
+// Helper function to upload file to Azure Blob Storage with high-quality preservation
+const uploadToAzureBlob = async (file, patientId, fileType) => {
   try {
     // Check if buffer exists and has content
     if (!file.buffer || file.buffer.length === 0) {
       throw new Error('File buffer is empty or missing');
     }
 
-    const form = new FormData();
-    const fileId = uuidv4();
-
-    form.append('fileId', fileId);
-    form.append('file', file.buffer, {
-      filename: file.originalname,
-      contentType: file.mimetype,
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    
+    // Ensure container exists
+    await containerClient.createIfNotExists({
+      access: 'blob' // Allow public read access to blobs
     });
 
-    const BUCKET_ID = process.env.APPWRITE_BUCKET_ID;
-    const PROJECT_ID = process.env.APPWRITE_PROJECT_ID;
-    const API_KEY = process.env.APPWRITE_API_KEY;
+    // Generate unique blob name with timestamp for better organization
+    const fileId = uuidv4();
+    const timestamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const fileExtension = path.extname(file.originalname);
+    const blobName = `${patientId}/${fileType}/${timestamp}/${fileId}${fileExtension}`;
+    
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-    const response = await axios.post(
-      `https://cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files`,
-      form,
-      {
-        headers: {
-          ...form.getHeaders(),
-          'X-Appwrite-Project': PROJECT_ID,
-          'X-Appwrite-Key': API_KEY,
-        },
+    // Upload options for high-quality preservation
+    const uploadOptions = {
+      blobHTTPHeaders: {
+        blobContentType: file.mimetype,
+        blobCacheControl: 'public, max-age=31536000', // Cache for 1 year
+        blobContentEncoding: undefined, // Don't compress images
+        blobContentLanguage: undefined,
+        blobContentDisposition: `inline; filename="${file.originalname}"`
+      },
+      metadata: {
+        originalName: file.originalname,
+        patientId: patientId.toString(),
+        fileType: fileType,
+        uploadedAt: new Date().toISOString(),
+        originalSize: file.size.toString(),
+        preserveQuality: 'true'
+      },
+      tier: 'Hot', // For frequently accessed files
+      conditions: {},
+      onProgress: (ev) => {
+        console.log(`Upload progress: ${ev.loadedBytes}/${file.size} bytes`);
       }
+    };
+
+    // Upload file buffer to blob with high-quality settings
+    const uploadResponse = await blockBlobClient.upload(
+      file.buffer, 
+      file.buffer.length,
+      uploadOptions
     );
 
     // Construct the file URL
-    const fileUrl = `https://cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files/${fileId}/view?project=${PROJECT_ID}`;
+    const fileUrl = blockBlobClient.url;
+
+    console.log(`✅ High-quality file uploaded: ${file.originalname} (${file.size} bytes)`);
 
     return {
       fileId: fileId,
@@ -76,39 +106,39 @@ const uploadToAppwrite = async (file, patientId, fileType) => {
       fileType: file.mimetype,
       fileSize: file.size,
       fileUrl: fileUrl,
-      fieldName: fileType
+      fieldName: fileType,
+      blobName: blobName,
+      etag: uploadResponse.etag,
+      qualityPreserved: true
     };
   } catch (error) {
-    console.error('Appwrite upload error:', error);
-    throw new Error(`Failed to upload file to Appwrite: ${error.message}`);
+    console.error('Azure Blob upload error:', error);
+    throw new Error(`Failed to upload file to Azure Blob Storage: ${error.message}`);
   }
 };
 
-// Helper function to delete file from Appwrite
-const deleteFromAppwrite = async (fileUrl) => {
+// Helper function to delete file from Azure Blob Storage
+const deleteFromAzureBlob = async (fileUrl) => {
   try {
-    // Extract fileId from URL
-    const urlParts = fileUrl.split('/');
-    const fileId = urlParts[urlParts.length - 2];
+    // Extract blob name from URL
+    const url = new URL(fileUrl);
+    const pathParts = url.pathname.split('/');
+    // Remove the first empty element and container name
+    pathParts.shift(); // Remove empty string
+    pathParts.shift(); // Remove container name
+    const blobName = pathParts.join('/');
     
-    const BUCKET_ID = process.env.APPWRITE_BUCKET_ID;
-    const PROJECT_ID = process.env.APPWRITE_PROJECT_ID;
-    const API_KEY = process.env.APPWRITE_API_KEY;
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-    await axios.delete(
-      `https://cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files/${fileId}`,
-      {
-        headers: {
-          'X-Appwrite-Project': PROJECT_ID,
-          'X-Appwrite-Key': API_KEY,
-        },
-      }
-    );
+    await blockBlobClient.delete({
+      deleteSnapshots: 'include'
+    });
 
     return true;
   } catch (error) {
-    console.error('Appwrite delete error:', error);
-    throw new Error(`Failed to delete file from Appwrite: ${error.message}`);
+    console.error('Azure Blob delete error:', error);
+    throw new Error(`Failed to delete file from Azure Blob Storage: ${error.message}`);
   }
 };
 
@@ -148,13 +178,15 @@ exports.uploadReportFileMiddleware = (req, res, next) => {
 };
 
 // Create a breast cancer report with 6 images
-// Create a breast cancer report with 6 images
 exports.createBreastCancerReport = async (req, res) => {
   try {
     const { patientId, doctorId, hospitalId, title, description } = req.body;
-    
+    console.log('DEBUG: createBreastCancerReport - Incoming request body:', { patientId, doctorId, hospitalId, title, description });
+    console.log('DEBUG: createBreastCancerReport - Received files:', req.files ? Object.keys(req.files) : 'No files');
+
     // Validate inputs
     if (!patientId || !doctorId || !hospitalId) {
+      console.log('DEBUG: createBreastCancerReport - Validation failed: Missing patientId, doctorId, or hospitalId.');
       return res.status(400).json({ error: '❌ Patient ID, Doctor ID, and Hospital ID are required' });
     }
 
@@ -167,12 +199,15 @@ exports.createBreastCancerReport = async (req, res) => {
     const missingImages = requiredImageFields.filter(field => !req.files || !req.files[field]);
     
     if (missingImages.length > 0) {
+      console.log(`DEBUG: createBreastCancerReport - Validation failed: Missing required breast images: ${missingImages.join(', ')}`);
       return res.status(400).json({ 
         error: `❌ Missing required breast images: ${missingImages.join(', ')}` 
       });
     }
+    console.log('DEBUG: createBreastCancerReport - All required images present.');
 
     // Validate patient exists and belongs to this hospital
+    console.log(`DEBUG: createBreastCancerReport - Searching for patient with ID: ${patientId} in hospital: ${hospitalId}`);
     const patient = await Patient.findOne({ 
       where: { 
         id: patientId,
@@ -181,10 +216,13 @@ exports.createBreastCancerReport = async (req, res) => {
     });
     
     if (!patient) {
+      console.log('DEBUG: createBreastCancerReport - Patient not found or not associated with hospital.');
       return res.status(404).json({ error: '❌ Patient not found or not associated with this hospital' });
     }
+    console.log('DEBUG: createBreastCancerReport - Patient found:', patient.id);
 
     // Validate doctor exists
+    console.log(`DEBUG: createBreastCancerReport - Searching for doctor with ID: ${doctorId} in hospital: ${hospitalId}`);
     const doctor = await Doctor.findOne({
       where: {
         id: doctorId,
@@ -193,6 +231,7 @@ exports.createBreastCancerReport = async (req, res) => {
     });
 
     // Get hospital data with imageUrl
+    console.log(`DEBUG: createBreastCancerReport - Searching for hospital with ID: ${hospitalId}`);
     const hospital = await Hospital.findOne({
       where: {
         id: hospitalId,
@@ -201,34 +240,42 @@ exports.createBreastCancerReport = async (req, res) => {
     });
 
     if (!doctor) {
+      console.log('DEBUG: createBreastCancerReport - Doctor not found or not associated with hospital.');
       return res.status(404).json({ error: '❌ Doctor not found or not associated with this hospital' });
     }
+    console.log('DEBUG: createBreastCancerReport - Doctor found:', doctor.id);
 
     if (!hospital) {
+      console.log('DEBUG: createBreastCancerReport - Hospital not found.');
       return res.status(404).json({ error: '❌ Hospital not found' });
     }
+    console.log('DEBUG: createBreastCancerReport - Hospital found:', hospital.id);
 
-    // Upload all images to Appwrite
+    // Upload all images to Azure Blob Storage
+    console.log('DEBUG: createBreastCancerReport - Starting image uploads to Azure Blob Storage...');
     const uploadPromises = [];
     
     for (const fieldName of requiredImageFields) {
+      console.log(`DEBUG: createBreastCancerReport - Preparing upload for image: ${fieldName}`);
       uploadPromises.push(
-        uploadToAppwrite(req.files[fieldName][0], patientId, fieldName)
+        uploadToAzureBlob(req.files[fieldName][0], patientId, fieldName)
       );
     }
 
     const uploadedImages = await Promise.all(uploadPromises);
+    console.log('DEBUG: createBreastCancerReport - All images uploaded successfully. Uploaded images data:', uploadedImages.map(img => ({ fieldName: img.fieldName, fileUrl: img.fileUrl })));
     
     // Create an image map that matches the expected format in generateBreastCancerReport
     const imageMap = {};
     uploadedImages.forEach(img => {
       imageMap[img.fieldName] = img.fileUrl;
     });
+    console.log('DEBUG: createBreastCancerReport - Image map created:', imageMap);
     
-    console.log("✅ Fetched Entities:", {
-      patient,
-      doctor,
-      hospital
+    console.log("DEBUG: createBreastCancerReport - Fetched Entities:", {
+      patient: { id: patient.id, firstName: patient.firstName, lastName: patient.lastName },
+      doctor: { id: doctor.id, name: doctor.name },
+      hospital: { id: hospital.id, name: hospital.name }
     });
     
     // Prepare the report data in the correct format expected by generateBreastCancerReport
@@ -255,14 +302,18 @@ exports.createBreastCancerReport = async (req, res) => {
       },
       images: imageMap
     };
+    console.log('DEBUG: createBreastCancerReport - PDF data prepared for generation.');
 
     // Generate PDF report from the uploaded images
+    console.log('DEBUG: createBreastCancerReport - Generating PDF report...');
     const pdfReportData = await generateBreastCancerReport(pdfData);
+    console.log(`DEBUG: createBreastCancerReport - PDF report generated. Size: ${pdfReportData.length} bytes.`);
 
     const currentDate = new Date();
     const formattedDate = currentDate.toISOString().replace(/[:.]/g, '-');
     
-    // Upload the generated PDF to Appwrite
+    // Upload the generated PDF to Azure Blob Storage
+    console.log('DEBUG: createBreastCancerReport - Uploading generated PDF to Azure Blob Storage...');
     const pdfFile = {
       buffer: pdfReportData,
       mimetype: 'application/pdf',
@@ -270,9 +321,11 @@ exports.createBreastCancerReport = async (req, res) => {
       size: pdfReportData.length
     };
     
-    const pdfUploadData = await uploadToAppwrite(pdfFile, patientId, 'generated_pdf_report');
+    const pdfUploadData = await uploadToAzureBlob(pdfFile, patientId, 'generated_pdf_report');
+    console.log('DEBUG: createBreastCancerReport - Generated PDF uploaded successfully. URL:', pdfUploadData.fileUrl);
 
     // Create report record in database
+    console.log('DEBUG: createBreastCancerReport - Creating report record in database...');
     const report = await Report.create({
       title: title || 'Breast Cancer Screening Report',
       description: description || 'Breast cancer screening report with 6 images',
@@ -288,12 +341,15 @@ exports.createBreastCancerReport = async (req, res) => {
       metadata: {
         images: uploadedImages.map(img => ({
           position: img.fieldName,
-          fileUrl: img.fileUrl
+          fileUrl: img.fileUrl,
+          blobName: img.blobName
         })),
         generatedAt: new Date().toISOString(),
-        generatedBy: doctorId
+        generatedBy: doctorId,
+        pdfBlobName: pdfUploadData.blobName
       }
     });
+    console.log('DEBUG: createBreastCancerReport - Report record created in database. Report ID:', report.id);
     
     res.status(201).json({
       message: '✅ Breast cancer report generated and uploaded successfully',
@@ -308,8 +364,9 @@ exports.createBreastCancerReport = async (req, res) => {
         uploadedAt: report.uploadedAt
       }
     });
+    console.log('DEBUG: createBreastCancerReport - Response sent successfully.');
   } catch (error) {
-    console.error("Error in createBreastCancerReport:", error);
+    console.error("ERROR: createBreastCancerReport - An error occurred:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -330,8 +387,6 @@ exports.createReport = async (req, res) => {
         hospitalId
       }
     });
-
-    
     
     if (!patient) {
       return res.status(404).json({ error: '❌ Patient not found or not associated with this hospital' });
@@ -356,14 +411,14 @@ exports.createReport = async (req, res) => {
       return res.status(400).json({ error: '❌ No report file uploaded' });
     }
     
-    // Upload file to Appwrite
-    const fileData = await uploadToAppwrite(req.file, patientId, 'general_report');
+    // Upload file to Azure Blob Storage
+    const fileData = await uploadToAzureBlob(req.file, patientId, 'general_report');
     
     // Create report record in database
     const report = await Report.create({
       title,
       description,
-      reportType: 'Brease Cancer Report',
+      reportType: reportType || 'General Report',
       patientId,
       doctorId,
       hospitalId,
@@ -371,7 +426,11 @@ exports.createReport = async (req, res) => {
       fileUrl: fileData.fileUrl,
       fileName: fileData.fileName,
       fileType: fileData.fileType,
-      fileSize: fileData.fileSize
+      fileSize: fileData.fileSize,
+      metadata: {
+        blobName: fileData.blobName,
+        etag: fileData.etag
+      }
     });
     
     res.status(201).json({
@@ -396,8 +455,6 @@ exports.getPatientReports = async (req, res) => {
   try {
     let { patientId } = req.params;
     
-
-   
     patientId = patientId || req.body.patientId;
     
     // Validate patient exists and belongs to this hospital
@@ -498,7 +555,6 @@ exports.getReportsByHospitalId = async (req, res) => {
           as: 'patient',
           attributes: ['firstName', 'lastName']
         },
-      
       ],
       order: [['id', 'DESC']],
       limit: pageSize,
@@ -517,7 +573,6 @@ exports.getReportsByHospitalId = async (req, res) => {
       reports: reports.map(report => ({
         ...report.get({ plain: true }),
         patientName: `${report.patient.firstName} ${report.patient.lastName}`,
-       
       }))
     });
   } catch (error) {
@@ -526,7 +581,7 @@ exports.getReportsByHospitalId = async (req, res) => {
   }
 };
 
-// Download a report (proxy the file from Appwrite)
+// Download a report (proxy the file from Azure Blob Storage)
 exports.downloadReport = async (req, res) => {
   try {
     const { reportId } = req.params;  
@@ -545,7 +600,7 @@ exports.downloadReport = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=${report.fileName}`);
     res.setHeader('Content-Type', report.fileType);
     
-    // Stream the file from Appwrite to the response
+    // Stream the file from Azure Blob Storage to the response
     https.get(report.fileUrl, (fileStream) => {
       fileStream.pipe(res);
     }).on('error', (err) => {
@@ -654,13 +709,13 @@ exports.permanentDeleteReport = async (req, res) => {
       return res.status(404).json({ error: '❌ Report not found' });
     }
     
-    // Delete file from Appwrite
-    await deleteFromAppwrite(report.fileUrl);
+    // Delete file from Azure Blob Storage
+    await deleteFromAzureBlob(report.fileUrl);
     
     // If this is a breast cancer report, also delete the source images
     if (report.reportType === 'Breast Cancer' && report.metadata && report.metadata.images) {
       const imageDeletePromises = report.metadata.images.map(image => 
-        deleteFromAppwrite(image.fileUrl)
+        deleteFromAzureBlob(image.fileUrl)
       );
       await Promise.all(imageDeletePromises);
     }

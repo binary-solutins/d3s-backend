@@ -357,6 +357,8 @@ function getReportTemplate() {
             font-size: 11px;
             width: 100%;
             margin: 0 auto;
+             width: 190cm; /* A4 width */
+            height: 28cm; /* A4 height */
         }
 
         .container {

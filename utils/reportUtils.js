@@ -371,7 +371,7 @@ function getReportTemplate() {
 
         .container {
             width: 210mm; /* A4 width */
-            min-height: 297mm; /* A4 height */
+            min-height: 280mm; /* A4 height */
             max-width: 210mm;
             margin: 0 auto;
             padding: 8mm;

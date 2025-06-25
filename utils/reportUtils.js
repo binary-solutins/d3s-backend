@@ -99,7 +99,8 @@ const generateBreastCancerReport = async (reportData) => {
         // Add these options for better single-page fitting
         width: '210mm',
         height: '297mm',
-        timeout: 30000
+        timeout: 30000,
+        quality:100
       };
       
       
@@ -198,7 +199,7 @@ async function fetchAndProcessImage(imageUrl) {
       try {
         const response = await axios.get(imageUrl, { 
           responseType: 'arraybuffer',
-          timeout: 10000, // 10 second timeout
+          timeout: 30000, // Increased timeout for high-quality images
           headers: {
             'Accept': 'image/*'
           }
@@ -209,15 +210,19 @@ async function fetchAndProcessImage(imageUrl) {
           throw new Error('Empty response received');
         }
         
-        // Process the image with sharp
+        // Process the image with sharp - HIGH QUALITY SETTINGS
         const buffer = await sharp(response.data)
           .resize({
-            width: 130, 
-            height: 130, 
+            width: 400,  // Increased from 130 to 400
+            height: 400, // Increased from 130 to 400
             fit: 'cover',
             position: 'center'
           })
-          .jpeg({ quality: 90 })
+          .jpeg({ 
+            quality: 100,    // Maximum quality (was 90)
+            progressive: true,
+            mozjpeg: true    // Use mozjpeg encoder for better quality
+          })
           .toBuffer();
         
         return `data:image/jpeg;base64,${buffer.toString('base64')}`;
@@ -225,8 +230,8 @@ async function fetchAndProcessImage(imageUrl) {
         error = err;
         console.warn(`Attempt ${attempt + 1} failed: ${err.message}`);
         attempt++;
-        // Wait 1 second before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait 2 seconds before retrying (increased from 1)
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
     
@@ -597,7 +602,7 @@ function getReportTemplate() {
         /* Remarks Section */
         .remarks-section {
             padding: 8px 15px;
-            margin: 50px 0;
+            margin: 10px 0;
             
         }
 

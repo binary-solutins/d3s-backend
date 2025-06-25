@@ -68,7 +68,7 @@ const uploadToAzureBlob = async (file, patientId, fileType) => {
     const uploadOptions = {
       blobHTTPHeaders: {
         blobContentType: file.mimetype,
-        blobCacheControl: 'public, max-age=31536000', // Cache for 1 year
+        blobCacheControl: 'public, max-age=31536000',
         blobContentEncoding: undefined, // Don't compress images
         blobContentLanguage: undefined,
         blobContentDisposition: `inline; filename="${file.originalname}"`
@@ -79,10 +79,15 @@ const uploadToAzureBlob = async (file, patientId, fileType) => {
         fileType: fileType,
         uploadedAt: new Date().toISOString(),
         originalSize: file.size.toString(),
-        preserveQuality: 'true'
+        preserveQuality: 'true',
+        highQuality: 'true',        // New flag
+        compressionLevel: 'none'    // New flag
       },
-      tier: 'Hot', // For frequently accessed files
+      tier: 'Hot',
       conditions: {},
+      // Add these options for better quality
+      blockSize: 4 * 1024 * 1024,  // 4MB blocks for better performance
+      concurrency: 5,
       onProgress: (ev) => {
         console.log(`Upload progress: ${ev.loadedBytes}/${file.size} bytes`);
       }

@@ -103,6 +103,7 @@ const generateBreastCancerReport = async (reportData) => {
       };
       
       
+      
       // Generate PDF from HTML
       htmlPdf.generatePdf({ content: html }, options)
         .then(pdfBuffer => {
@@ -346,39 +347,45 @@ function getReportTemplate() {
 
         @page {
             size: A4;
-            margin: 0;
+            margin: 10mm;
         }
 
         body {
             font-family: 'Roboto', Arial, sans-serif;
-            line-height: 1.4;
+            line-height: 1.3;
             color: #333;
-            background-color: #fff;
-            font-size: 12px;
-            width: 21cm; /* A4 width */
-            height: 32.7cm; /* A4 height */
-            margin: 0 auto;
-            position: relative;
+            background-color: #f5f5f5;
+            font-size: 11px;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
         }
 
         .container {
-            width: 100%;
-            height: 100%;
+            width: 210mm; /* A4 width */
+            min-height: 297mm; /* A4 height */
+            max-width: 210mm;
             margin: 0 auto;
-            padding: 15px; /* Added padding for border space */
-            position: relative;
-            border: 3px solid #FFB6C1; /* Pink border around entire report */
+            padding: 8mm;
+            border: 3px solid #FFB6C1;
             border-radius: 8px;
             box-sizing: border-box;
             background-color: #fff;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            position: relative;
         }
 
         /* Header Section */
         .header {
             width: 100%;
-            padding: 15px 20px;
+            padding: 8px 15px;
             border-bottom: 1px solid #ddd;
-            display: block;
+            margin-bottom: 10px;
         }
 
         .header-inner {
@@ -392,7 +399,7 @@ function getReportTemplate() {
         }
 
         .logo h2 {
-            font-size: 26px;
+            font-size: 20px;
             font-weight: 700;
             color: #000;
             margin: 0;
@@ -404,44 +411,48 @@ function getReportTemplate() {
 
         .title {
             text-align: center;
+            flex: 1;
         }
 
         .title h1 {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 700;
             text-transform: uppercase;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
             margin-top: 0;
         }
 
         .date {
-            font-size: 16px;
+            font-size: 12px;
             color: #555;
             margin: 0;
         }
 
         .hospital-logo {
             text-align: right;
+            width: 20%;
         }
 
         .logo-container {
-            width: 100px;
-            height: 100px;
+            width: 60px;
+            height: 60px;
             display: inline-block;
         }
 
         .logo-container img {
             width: 100%;
             height: auto;
+            max-height: 60px;
+            object-fit: contain;
         }
         
         .main-logo {
-            text-align: right;
+            width: 20%;
         }
 
         .main-logo-container {
-            width: 150px;
-            height: 100px;
+            width: 80px;
+            height: 60px;
             display: flex;
             align-items: center;
         }
@@ -449,6 +460,8 @@ function getReportTemplate() {
         .main-logo-container img {
             width: 100%;
             height: auto;
+            max-height: 60px;
+            object-fit: contain;
         }
 
         /* Details Section */
@@ -456,8 +469,9 @@ function getReportTemplate() {
             display: flex;
             justify-content: space-between;
             width: 100%;
-            margin: 15px 0;
-            padding: 0 20px;
+            margin: 8px 0;
+            padding: 0 15px;
+            gap: 15px;
         }
 
         .details-box {
@@ -469,30 +483,31 @@ function getReportTemplate() {
 
         .details-header {
             background-color: #000 !important;
-            padding: 10px 15px;
+            padding: 6px 10px;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
 
         .details-header h3 {
             color: #fff !important;
-            font-size: 18px;
+            font-size: 13px;
             font-weight: 500;
             margin: 0;
         }
 
         .details-content {
-            padding: 15px;
+            padding: 8px 10px;
         }
 
         .detail-row {
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             display: flex;
             flex-wrap: nowrap;
+            font-size: 10px;
         }
 
         .detail-label {
-            min-width: 120px;
+            min-width: 80px;
             color: #555;
             font-weight: 500;
             display: inline-block;
@@ -502,12 +517,13 @@ function getReportTemplate() {
             color: #000;
             font-weight: 400;
             display: inline-block;
+            flex: 1;
         }
 
         /* Screening Section */
         .screening-section {
-            margin: 20px 0;
-            padding: 0 20px;
+            margin: 12px 0;
+            padding: 0 15px;
             page-break-inside: avoid;
         }
 
@@ -516,15 +532,17 @@ function getReportTemplate() {
             align-items: center;
             background-color: #fff;
             border: 2px solid #FFB6C1;
-            border-radius: 25px;
-            padding: 8px 15px;
-            margin-bottom: 15px;
+            border-radius: 20px;
+            padding: 4px 10px;
+            margin-bottom: 8px;
             width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .breast-icon {
-            width: 40px;
-            height: 40px;
+            width: 25px;
+            height: 25px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -537,9 +555,9 @@ function getReportTemplate() {
 
         .screening-header h3 {
             margin: 0;
-            padding-left: 10px;
+            padding-left: 8px;
             color: #000;
-            font-size: 18px;
+            font-size: 13px;
             font-weight: 500;
         }
 
@@ -548,6 +566,7 @@ function getReportTemplate() {
             display: flex;
             justify-content: space-between;
             width: 100%;
+            gap: 10px;
         }
 
         .image-column {
@@ -556,16 +575,17 @@ function getReportTemplate() {
         }
 
         .image-column h4 {
-            margin-bottom: 10px;
-            font-size: 14px;
+            margin-bottom: 6px;
+            font-size: 11px;
         }
 
         .image-container {
-            width: 150px !important;
-            height: 150px !important;
+            width: 100px !important;
+            height: 100px !important;
             display: inline-block;
             border: 1px solid #ddd;
             overflow: hidden;
+            margin: 0 auto;
         }
 
         .image-container img {
@@ -576,21 +596,20 @@ function getReportTemplate() {
 
         /* Remarks Section */
         .remarks-section {
-            padding: 10px;
-        }
-
-        .mainlogo {
-            margin-top: 15px;
+            padding: 8px 15px;
+            margin: 10px 0;
+            flex-grow: 1; /* This allows remarks section to expand and push footer down */
         }
 
         .remarks-section p {
             font-weight: bold;
             margin-bottom: 5px;
+            font-size: 11px;
         }
 
         .center {
             display: flex;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             justify-content: center;
             align-items: center;
         }
@@ -598,28 +617,27 @@ function getReportTemplate() {
         .remarks-line {
             height: 1px;
             background-color: #ddd;
-            margin: 15px 0;
+            margin: 8px 0;
         }
 
-        /* Footer Section */
+        /* Footer Section - FIXED: Positioned at bottom */
         .footer {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            width: calc(100% - 40px); /* Adjusted for container padding */
+            width: 100%;
             background-color: #FFF0F5 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            padding: 10px 20px;
-            position: absolute;
-            bottom: 30px; /* Adjusted to accommodate border */
-            left: 35px; /* Adjusted for container padding */
+            padding: 8px 15px;
+            margin-top: auto; /* This pushes footer to bottom */
+            border-top: 1px solid #ddd;
         }
 
         .disclaimer {
             width: 70%;
-            font-size: 12px;
-            line-height: 1.3;
+            font-size: 9px;
+            line-height: 1.2;
         }
 
         .disclaimer-title {
@@ -633,10 +651,11 @@ function getReportTemplate() {
             display: flex;
             align-items: center;
             justify-content: flex-end;
+            font-size: 9px;
         }
 
         .powered-by span {
-            margin-right: 10px;
+            margin-right: 5px;
         }
 
         .powered-logos {
@@ -645,9 +664,9 @@ function getReportTemplate() {
         }
 
         .powered-logos img {
-            height: 25px;
+            height: 20px;
             width: auto;
-            margin-left: 10px;
+            margin-left: 5px;
         }
 
         /* Force background colors in print */
@@ -659,11 +678,43 @@ function getReportTemplate() {
 
         /* Additional pink border emphasis for PDF generation */
         @media print {
+            body {
+                background-color: #fff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            
             .container {
                 border: 4px solid #FFB6C1 !important;
                 border-radius: 8px !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                width: 100% !important;
+                max-width: none !important;
+                min-height: auto !important;
+                padding: 5mm !important;
+            }
+            
+            .screening-section {
+                page-break-inside: avoid;
+            }
+        }
+
+        /* For PDF generation tools */
+        @media screen and (max-width: 1px) {
+            body {
+                background-color: #fff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            
+            .container {
+                width: 100% !important;
+                max-width: none !important;
+                margin: 0 !important;
+                box-shadow: none !important;
             }
         }
     </style>
@@ -673,8 +724,8 @@ function getReportTemplate() {
         <header class="header">
             <div class="header-inner">
                <div class="main-logo">
-                    <div class="main-logo-container mainlogo">
-                        <img src="https://fra.cloud.appwrite.io/v1/storage/buckets/681a95120019afd4e319/files/685b238500142409a042/view?project=681a94cb0031df448ed3&" alt="Hospital Logo">
+                    <div class="main-logo-container">
+                        <img src="https://fra.cloud.appwrite.io/v1/storage/buckets/681a95120019afd4e319/files/685b238500142409a042/view?project=681a94cb0031df448ed3&" alt="Main Logo">
                     </div>
                 </div>
                 <div class="title">
@@ -789,7 +840,6 @@ function getReportTemplate() {
         <div class="screening-section">
             <div class="center">
             <div class="screening-header">
-              
                 <div class="breast-icon">
                     <img src="{{breastIcon}}" alt="Breast Icon">
                 </div>

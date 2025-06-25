@@ -580,8 +580,8 @@ function getReportTemplate() {
         }
 
         .image-container {
-            width: 100px !important;
-            height: 100px !important;
+            width: 200px !important;
+            height: 200px !important;
             display: inline-block;
             border: 1px solid #ddd;
             overflow: hidden;
@@ -597,8 +597,8 @@ function getReportTemplate() {
         /* Remarks Section */
         .remarks-section {
             padding: 8px 15px;
-            margin: 10px 0;
-            flex-grow: 1; /* This allows remarks section to expand and push footer down */
+            margin: 50px 0;
+            
         }
 
         .remarks-section p {
@@ -630,7 +630,7 @@ function getReportTemplate() {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             padding: 8px 15px;
-            margin-top: auto; /* This pushes footer to bottom */
+           
             border-top: 1px solid #ddd;
         }
 

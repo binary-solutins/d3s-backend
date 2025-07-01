@@ -137,6 +137,96 @@ router.post('/products', orderController.handleFileUpload, orderController.creat
  */
 router.put('/products/:id', orderController.handleFileUpload, orderController.updateProduct);
 
+
+/**
+ * @swagger
+ * /api/orders/products/{id}:
+ *   delete:
+ *     summary: Delete a product by ID
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Product ID to delete
+ *         example: "123e4567-e89b-12d3-a456-426614174000"
+ *     responses:
+ *       200:
+ *         description: Product deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "✅ Product deleted successfully"
+ *                 deletedProduct:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "123e4567-e89b-12d3-a456-426614174000"
+ *                     name:
+ *                       type: string
+ *                       example: "Professional ECG Monitor Pro X1"
+ *                     category:
+ *                       type: string
+ *                       example: "ecg"
+ *       400:
+ *         description: Bad request - Product ID is required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ Product ID is required"
+ *       404:
+ *         description: Product not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ Product not found"
+ *       409:
+ *         description: Conflict - Product has active orders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ Cannot delete product with active orders"
+ *                 details:
+ *                   type: string
+ *                   example: "Product has 2 active order(s). Please complete or cancel these orders first."
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "❌ Failed to delete product"
+ *                 details:
+ *                   type: string
+ *                   example: "Database connection error"
+ */
+router.delete('/products/:id', orderController.deleteProduct);
+
 /**
  * @swagger
  * /api/orders/products:

@@ -85,23 +85,22 @@ const generateBreastCancerReport = async (reportData) => {
         format: 'A4',
         printBackground: true,
         margin: {
-          top: '5mm',
-          right: '5mm',
-          bottom: '5mm',
-          left: '5mm'
+            top: '3mm', /* Reduced from 5mm */
+            right: '3mm', /* Reduced from 5mm */
+            bottom: '3mm', /* Reduced from 5mm */
+            left: '3mm' /* Reduced from 5mm */
         },
         args: [
-          '--no-sandbox', 
-          '--disable-setuid-sandbox',
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor'
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor'
         ],
-        // Add these options for better single-page fitting
         width: '210mm',
         height: '297mm',
         timeout: 30000,
-        quality:100
-      };
+        quality: 100
+    };
       
       
       
@@ -313,23 +312,28 @@ async function getAWSLogo() {
 }
 
 /**
- * Format date
+ * Format date to Indian Standard Time
  * @param {Date} date - Date object
- * @returns {string} - Formatted date string
+ * @returns {string} - Formatted date string in IST
  */
 function formatDate(date) {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const day = date.getUTCDate();
-  const month = months[date.getUTCMonth()];
-  const year = date.getUTCFullYear();
+  
+  // Convert to Indian Standard Time (IST = UTC + 5:30)
+  const istOffset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
+  const istDate = new Date(date.getTime() + istOffset);
+  
+  const day = istDate.getUTCDate();
+  const month = months[istDate.getUTCMonth()];
+  const year = istDate.getUTCFullYear();
 
-  let hours = date.getUTCHours();
-  const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+  let hours = istDate.getUTCHours();
+  const minutes = istDate.getUTCMinutes().toString().padStart(2, '0');
   const ampm = hours >= 12 ? 'pm' : 'am';
   hours = hours % 12;
   hours = hours ? hours : 12;
 
-  return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm} UTC`;
+  return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm} IST`;
 }
 
 /**
@@ -369,21 +373,21 @@ function getReportTemplate() {
             min-height: 100vh;
         }
 
-        .container {
-            width: 210mm; /* A4 width */
-            min-height: 280mm; /* A4 height */
-            max-width: 210mm;
-            margin: 0 auto;
-            padding: 8mm;
-            border: 3px solid #FFB6C1;
-            border-radius: 8px;
-            box-sizing: border-box;
-            background-color: #fff;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
+      .container {
+    width: 190mm; /* Reduced from 210mm */
+    min-height: 260mm; /* Reduced from 280mm */
+    max-width: 190mm; /* Reduced from 210mm */
+    margin: 0 auto;
+    padding: 6mm; /* Reduced from 8mm */
+    border: 2px solid #FFB6C1; /* Reduced from 3px */
+    border-radius: 6px; /* Reduced from 8px */
+    box-sizing: border-box;
+    background-color: #fff;
+    /* Removed box-shadow to prevent extra page */
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
 
         /* Header Section */
         .header {
@@ -682,30 +686,30 @@ function getReportTemplate() {
         }
 
         /* Additional pink border emphasis for PDF generation */
-        @media print {
-            body {
-                background-color: #fff !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-            
-            .container {
-                border: 4px solid #FFB6C1 !important;
-                border-radius: 8px !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                box-shadow: none !important;
-                margin: 0 !important;
-                width: 100% !important;
-                max-width: none !important;
-                min-height: auto !important;
-                padding: 5mm !important;
-            }
-            
-            .screening-section {
-                page-break-inside: avoid;
-            }
-        }
+       @media print {
+    body {
+        background-color: #fff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    .container {
+        border: 2px solid #FFB6C1 !important; /* Reduced from 4px */
+        border-radius: 6px !important; /* Reduced from 8px */
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-height: auto !important;
+        padding: 4mm !important; /* Reduced from 5mm */
+    }
+    
+    .screening-section {
+        page-break-inside: avoid;
+    }
+}
 
         /* For PDF generation tools */
         @media screen and (max-width: 1px) {

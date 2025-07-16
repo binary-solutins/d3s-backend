@@ -91,10 +91,13 @@ const generateBreastCancerReport = async (reportData) => {
             left: '3mm' /* Reduced from 5mm */
         },
         args: [
-            '--no-sandbox', 
-            '--disable-setuid-sandbox',
-            '--disable-web-security',
-            '--disable-features=VizDisplayCompositor'
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-gpu',
+          '--disable-dev-shm-usage',
+          '--disable-features=VizDisplayCompositor',
+          '--single-process',
+          '--no-zygote'
         ],
         width: '210mm',
         height: '297mm',

@@ -4,7 +4,8 @@
   "description": "this is the backend for the d3s appplication",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "postinstall": "puppeteer install"
   },
   "keywords": [
     "d3s"
@@ -34,7 +35,7 @@
     "nodemailer": "^6.10.0",
     "pdfkit": "^0.17.1",
     "phantomjs-prebuilt": "^2.1.16",
-    "puppeteer": "^24.8.2",
+    "puppeteer": "19.0.0",
     "sequelize": "^6.37.7",
     "sharp": "^0.34.1",
     "sqlite3": "^5.1.7",

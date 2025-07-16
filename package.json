@@ -4,8 +4,7 @@
   "description": "this is the backend for the d3s appplication",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js",
-    "postinstall": "puppeteer install"
+    "start": "node app.js"
   },
   "keywords": [
     "d3s"

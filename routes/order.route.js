@@ -375,7 +375,7 @@ router.get('/customer/:email', orderController.getOrdersByEmail);
  *           type: array
  *           items:
  *             type: string
- *           example: ["https://cloud.appwrite.io/v1/storage/buckets/.../files/.../view"]
+ *           example: ["https://yourstorageaccount.blob.core.windows.net/product-images/products/2024-01-15/..."]
  *         features:
  *           type: array
  *           items:

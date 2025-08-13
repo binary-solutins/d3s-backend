@@ -2,11 +2,17 @@ const { Product, Order } = require("../models");
 const { v4: uuidv4 } = require("uuid");
 const multer = require("multer");
 const path = require("path");
-const axios = require("axios");
-const FormData = require("form-data");
+// Azure Blob Storage imports
+const { BlobServiceClient } = require('@azure/storage-blob');
 
 // Counter for sequential order IDs
 let orderCounter = 1;
+
+// Initialize Azure Blob Service Client
+const blobServiceClient = BlobServiceClient.fromConnectionString(
+  process.env.AZURE_STORAGE_CONNECTION_STRING
+);
+const containerName = 'product-images';
 
 // Configure multer for memory storage
 const upload = multer({
@@ -39,56 +45,57 @@ exports.handleFileUpload = (req, res, next) => {
   });
 };
 
-const uploadToAppwrite = async (file) => {
+// Helper function to upload image to Azure Blob Storage
+const uploadToAzureBlob = async (file) => {
   try {
-    // Debug log to check file properties
-    console.log("File to upload:", {
-      name: file.originalname,
-      size: file.size,
-      mimeType: file.mimetype,
-      hasBuffer: !!file.buffer,
-      bufferLength: file.buffer ? file.buffer.length : 0,
-    });
-
     // Check if buffer exists and has content
     if (!file.buffer || file.buffer.length === 0) {
-      throw new Error("File buffer is empty or missing");
+      throw new Error('File buffer is empty or missing');
     }
 
-    const form = new FormData();
-    const fileId = uuidv4();
-
-    form.append("fileId", fileId);
-    form.append("file", file.buffer, {
-      filename: file.originalname,
-      contentType: file.mimetype,
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    
+    // Ensure container exists
+    await containerClient.createIfNotExists({
+      access: 'blob'
     });
 
-    const BUCKET_ID = process.env.APPWRITE_BUCKET_ID;
-    const PROJECT_ID = process.env.APPWRITE_PROJECT_ID;
-    const API_KEY = process.env.APPWRITE_API_KEY;
+    // Generate unique blob name
+    const fileId = uuidv4();
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const fileExtension = path.extname(file.originalname);
+    const blobName = `products/${timestamp}/${fileId}${fileExtension}`;
+    
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-    const response = await axios.post(
-      `https://cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files`,
-      form,
-      {
-        headers: {
-          ...form.getHeaders(),
-          "X-Appwrite-Project": PROJECT_ID,
-          "X-Appwrite-Key": API_KEY,
-        },
+    // Upload options
+    const uploadOptions = {
+      blobHTTPHeaders: {
+        blobContentType: file.mimetype,
+        blobCacheControl: 'public, max-age=31536000',
+        blobContentDisposition: `inline; filename="${file.originalname}"`
+      },
+      metadata: {
+        originalName: file.originalname,
+        uploadedAt: new Date().toISOString(),
+        originalSize: file.size.toString()
       }
+    };
+
+    // Upload file buffer to blob
+    await blockBlobClient.upload(
+      file.buffer, 
+      file.buffer.length,
+      uploadOptions
     );
 
-    const uploadedFileId = response.data.$id;
-    const fileUrl = `https://cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files/${uploadedFileId}/view?project=${PROJECT_ID}`;
-    return fileUrl;
+    // Return the file URL
+    return blockBlobClient.url;
   } catch (error) {
-    console.error("Appwrite upload error:", error);
-    throw new Error(`Failed to upload image to Appwrite: ${error.message}`);
+    console.error('Azure Blob upload error:', error);
+    throw new Error(`Failed to upload image to Azure Blob Storage: ${error.message}`);
   }
 };
-
 
 
 exports.createProduct = async (req, res) => {
@@ -98,9 +105,9 @@ exports.createProduct = async (req, res) => {
     // Check if files were uploaded
     if (req.files && req.files.length > 0) {
       try {
-        // Upload all images to Appwrite
+        // Upload all images to Azure Blob Storage
         for (const file of req.files) {
-          const imageUrl = await uploadToAppwrite(file);
+          const imageUrl = await uploadToAzureBlob(file);
           imageUrls.push(imageUrl);
         }
       } catch (uploadError) {
@@ -183,10 +190,10 @@ exports.updateProduct = async (req, res) => {
     // Check if files were uploaded
     if (req.files && req.files.length > 0) {
       try {
-        // Upload new images to Appwrite
+        // Upload new images to Azure Blob Storage
         const newImageUrls = [];
         for (const file of req.files) {
-          const imageUrl = await uploadToAppwrite(file);
+          const imageUrl = await uploadToAzureBlob(file);
           newImageUrls.push(imageUrl);
         }
 

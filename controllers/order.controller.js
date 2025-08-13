@@ -123,6 +123,25 @@ exports.createProduct = async (req, res) => {
     let parsedFeatures = req.body.features;
     let parsedSpecifications = req.body.specifications;
     let parsedHighlights = req.body.highlights;
+    let parsedImages = [];
+
+    // Parse images if it's a string
+    if (req.body.images) {
+      try {
+        if (typeof req.body.images === "string") {
+          parsedImages = JSON.parse(req.body.images);
+        } else if (Array.isArray(req.body.images)) {
+          parsedImages = req.body.images;
+        } else {
+          parsedImages = [req.body.images];
+        }
+        // Ensure all images are strings
+        parsedImages = parsedImages.map(img => typeof img === 'string' ? img : JSON.stringify(img));
+      } catch (e) {
+        console.error('Error parsing images:', e);
+        parsedImages = [];
+      }
+    }
 
     // Parse features if it's a string
     if (typeof req.body.features === "string") {
@@ -154,7 +173,7 @@ exports.createProduct = async (req, res) => {
     const productData = {
       ...req.body,
       // Use uploaded image URLs or keep existing ones from request body
-      images: imageUrls.length > 0 ? imageUrls : req.body.images || [],
+      images: imageUrls.length > 0 ? imageUrls : parsedImages,
       features: parsedFeatures,
       specifications: parsedSpecifications,
       // Convert highlights to store only keys (only if it's an array)
@@ -168,7 +187,30 @@ exports.createProduct = async (req, res) => {
     };
 
     const product = await Product.create(productData);
-    res.status(201).json(product);
+    
+    // Ensure the response has properly formatted images
+    const responseProduct = product.toJSON();
+    if (responseProduct.images) {
+      try {
+        if (Array.isArray(responseProduct.images)) {
+          responseProduct.images = responseProduct.images.map(img => 
+            typeof img === 'string' ? img : JSON.stringify(img)
+          );
+        } else if (typeof responseProduct.images === 'string') {
+          const parsed = JSON.parse(responseProduct.images);
+          responseProduct.images = Array.isArray(parsed) ? parsed : [parsed];
+        } else {
+          responseProduct.images = [JSON.stringify(responseProduct.images)];
+        }
+      } catch (error) {
+        console.error('Error formatting response images:', error);
+        responseProduct.images = [];
+      }
+    } else {
+      responseProduct.images = [];
+    }
+    
+    res.status(201).json(responseProduct);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -185,7 +227,24 @@ exports.updateProduct = async (req, res) => {
       return res.status(404).json({ error: "❌ Product not found" });
     }
 
-    let imageUrls = product.images || [];
+    let imageUrls = [];
+
+    // Handle existing images - ensure they're properly parsed
+    if (product.images) {
+      try {
+        if (Array.isArray(product.images)) {
+          imageUrls = product.images.map(img => typeof img === 'string' ? img : JSON.stringify(img));
+        } else if (typeof product.images === 'string') {
+          const parsed = JSON.parse(product.images);
+          imageUrls = Array.isArray(parsed) ? parsed : [parsed];
+        } else {
+          imageUrls = [JSON.stringify(product.images)];
+        }
+      } catch (error) {
+        console.error('Error parsing existing images:', error);
+        imageUrls = [];
+      }
+    }
 
     // Check if files were uploaded
     if (req.files && req.files.length > 0) {
@@ -213,6 +272,25 @@ exports.updateProduct = async (req, res) => {
     let parsedSpecifications =
       req.body.specifications || product.specifications;
     let parsedHighlights = req.body.highlights || product.highlights;
+    let parsedImages = imageUrls;
+
+    // Parse images from request body if provided and no files uploaded
+    if (req.body.images && (!req.files || req.files.length === 0)) {
+      try {
+        if (typeof req.body.images === "string") {
+          parsedImages = JSON.parse(req.body.images);
+        } else if (Array.isArray(req.body.images)) {
+          parsedImages = req.body.images;
+        } else {
+          parsedImages = [req.body.images];
+        }
+        // Ensure all images are strings
+        parsedImages = parsedImages.map(img => typeof img === 'string' ? img : JSON.stringify(img));
+      } catch (e) {
+        console.error('Error parsing images from request body:', e);
+        parsedImages = imageUrls; // Keep existing images if parsing fails
+      }
+    }
 
     // Parse features if it's a string
     if (typeof req.body.features === "string") {
@@ -249,7 +327,7 @@ exports.updateProduct = async (req, res) => {
       rating: req.body.rating || product.rating,
       reviewCount: req.body.reviewCount || product.reviewCount,
       description: req.body.description || product.description,
-      images: imageUrls,
+      images: parsedImages,
       features: parsedFeatures,
       specifications: parsedSpecifications,
       // Convert highlights to store only keys (only if it's an array)
@@ -264,9 +342,31 @@ exports.updateProduct = async (req, res) => {
 
     await product.update(updateData);
 
+    // Ensure the response has properly formatted images
+    const responseProduct = product.toJSON();
+    if (responseProduct.images) {
+      try {
+        if (Array.isArray(responseProduct.images)) {
+          responseProduct.images = responseProduct.images.map(img => 
+            typeof img === 'string' ? img : JSON.stringify(img)
+          );
+        } else if (typeof responseProduct.images === 'string') {
+          const parsed = JSON.parse(responseProduct.images);
+          responseProduct.images = Array.isArray(parsed) ? parsed : [parsed];
+        } else {
+          responseProduct.images = [JSON.stringify(responseProduct.images)];
+        }
+      } catch (error) {
+        console.error('Error formatting response images:', error);
+        responseProduct.images = [];
+      }
+    } else {
+      responseProduct.images = [];
+    }
+
     res.status(200).json({
       message: "✅ Product updated successfully",
-      product,
+      product: responseProduct,
     });
   } catch (error) {
     console.error("Update product error:", error);
@@ -333,8 +433,41 @@ exports.deleteProduct = async (req, res) => {
 exports.getAllProducts = async (req, res) => {
   try {
     const products = await Product.findAll();
-    res.status(200).json(products);
+    
+    // Ensure proper JSON parsing for images field
+    const processedProducts = products.map(product => {
+      const productData = product.toJSON();
+      
+      // Ensure images is always an array of strings
+      if (productData.images) {
+        try {
+          // If images is already an array, use it as is
+          if (Array.isArray(productData.images)) {
+            productData.images = productData.images.map(img => 
+              typeof img === 'string' ? img : JSON.stringify(img)
+            );
+          } else if (typeof productData.images === 'string') {
+            // If it's a string, try to parse it as JSON
+            const parsed = JSON.parse(productData.images);
+            productData.images = Array.isArray(parsed) ? parsed : [parsed];
+          } else {
+            // If it's an object or other type, convert to string
+            productData.images = [JSON.stringify(productData.images)];
+          }
+        } catch (error) {
+          console.error('Error parsing images for product:', productData.id, error);
+          productData.images = [];
+        }
+      } else {
+        productData.images = [];
+      }
+      
+      return productData;
+    });
+    
+    res.status(200).json(processedProducts);
   } catch (error) {
+    console.error('Get all products error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -351,8 +484,37 @@ exports.getProductById = async (req, res) => {
     if (!product) {
       return res.status(404).json({ error: "Product not found" });
     }
-    res.status(200).json(product);
+    
+    // Ensure proper JSON parsing for images field
+    const productData = product.toJSON();
+    
+    // Ensure images is always an array of strings
+    if (productData.images) {
+      try {
+        // If images is already an array, use it as is
+        if (Array.isArray(productData.images)) {
+          productData.images = productData.images.map(img => 
+            typeof img === 'string' ? img : JSON.stringify(img)
+          );
+        } else if (typeof productData.images === 'string') {
+          // If it's a string, try to parse it as JSON
+          const parsed = JSON.parse(productData.images);
+          productData.images = Array.isArray(parsed) ? parsed : [parsed];
+        } else {
+          // If it's an object or other type, convert to string
+          productData.images = [JSON.stringify(productData.images)];
+        }
+      } catch (error) {
+        console.error('Error parsing images for product:', productData.id, error);
+        productData.images = [];
+      }
+    } else {
+      productData.images = [];
+    }
+    
+    res.status(200).json(productData);
   } catch (error) {
+    console.error('Get product by ID error:', error);
     res.status(500).json({ error: error.message });
   }
 };

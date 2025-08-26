@@ -117,7 +117,8 @@ exports.signup = async (req, res) => {
       password: hashedPassword,
       otp,
       imageUrl,
-      phone
+      phone,
+      isVerified: false
     });
 
     await sendEmail(email, '📧 Verify Your Email', `Your OTP is: ${otp}`);

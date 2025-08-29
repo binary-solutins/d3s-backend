@@ -141,7 +141,7 @@ exports.verifyOtp = async (req, res) => {
     if (!hospital) return res.status(404).json({ error: '❌ Hospital not found' });
     if (hospital.otp !== otp) return res.status(400).json({ error: '❌ Invalid OTP' });
 
-    await hospital.update({ isVerified: true, otp: null });
+    await hospital.update({ isVerified: false, otp: null });
     res.status(200).json({ message: '✅ Email verified successfully' });
   } catch (error) {
     console.error('OTP verification error:', error);

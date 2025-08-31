@@ -4,18 +4,8 @@ const Sequelize = require('sequelize');
 const basename = path.basename(__filename);
 const db = {};
 
-// 🌐 Clever Cloud MySQL connection
-const sequelize = new Sequelize(
-  'bwrwfaltw8djchryzsli',         // DB_NAME
-  'uk6a3p01ehdlwgyp',             // DB_USER
-  'eXop27L51bIEeGPlsSu8',         // DB_PASSWORD
-  {
-    host: 'bwrwfaltw8djchryzsli-mysql.services.clever-cloud.com', // DB_HOST
-    dialect: 'mysql',
-    port: 3306,
-    logging: console.log, // Set to true if you want to see SQL logs
-  }
-);
+// 🌐 Use database configuration from config file (uses environment variables)
+const sequelize = require('../config/db.config');
 
 // ✅ Load models
 fs.readdirSync(__dirname)

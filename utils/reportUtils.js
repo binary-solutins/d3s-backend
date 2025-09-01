@@ -737,11 +737,11 @@ function getReportTemplate() {
             <div class="header-inner">
                <div class="main-logo">
                     <div class="main-logo-container">
-                        <img src="https://fra.cloud.appwrite.io/v1/storage/buckets/681a95120019afd4e319/files/685b238500142409a042/view?project=681a94cb0031df448ed3&" alt="Main Logo">
+                        <img src="https://brscan.blob.core.windows.net/static-images/logo.png" alt="Main Logo">
                     </div>
                 </div>
                 <div class="title">
-                    <h1>{{title}}</h1>
+                    <h1>Breast Health Screening Report</h1>
                     <p class="date">{{date}}</p>
                 </div>
                 <div class="hospital-logo">
@@ -888,8 +888,7 @@ function getReportTemplate() {
 
         <footer class="footer">
             <div class="disclaimer">
-                <span class="disclaimer-title">Disclaimer:</span> The Breast screening report we provide is based on what we can see in the images. It
-                might change over time, depending on how the pictures are taken and how well we can see.
+                <span class="disclaimer-title">Disclaimer:</span> This breast health screening report is based on visual observations from the captured images, which may vary with image quality, positioning, and visibility. Findings are subject to change over time. This is not a diagnostic report and should not replace clinical evaluation or further investigations such as mammography or ultrasound.
             </div>
             <div class="powered-by">
                 <span>Powered By</span>

@@ -495,6 +495,80 @@ router.get('/hospital/:hospitalId', reportController.getReportsByHospitalId);
 
 /**
  * @swagger
+ * /api/reports/hospital/{hospitalId}/zip:
+ *   get:
+ *     summary: Download all reports for a hospital as a ZIP
+ *     tags: [Patient Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: hospitalId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the hospital
+ *     responses:
+ *       200:
+ *         description: ZIP archive of hospital reports
+ *         content:
+ *           application/zip:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Hospital not found or no reports available
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Server error
+ */
+router.get('/hospital/:hospitalId/zip', reportController.downloadHospitalReportsZip);
+
+/**
+ * @swagger
+ * /api/reports/hospital/zip:
+ *   post:
+ *     summary: Download all reports for a hospital as a ZIP (body)
+ *     tags: [Patient Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - hospitalId
+ *             properties:
+ *               hospitalId:
+ *                 type: integer
+ *                 description: ID of the hospital
+ *     responses:
+ *       200:
+ *         description: ZIP archive of hospital reports
+ *         content:
+ *           application/zip:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Missing hospitalId
+ *       404:
+ *         description: Hospital not found or no reports available
+ *       500:
+ *         description: Server error
+ */
+router.post('/hospital/zip', reportController.downloadHospitalReportsZip);
+
+/**
+ * @swagger
  * /api/reports/{reportId}/download:
  *   get:
  *     summary: Download a report file

@@ -11,6 +11,7 @@ const https = require('https');
 const fs = require('fs');
 const PDFDocument = require('pdfkit');
 const { v4: uuidv4 } = require('uuid');
+const archiver = require('archiver');
 
 // Azure Blob Storage imports
 const { BlobServiceClient } = require('@azure/storage-blob');
@@ -790,5 +791,92 @@ exports.searchReports = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+// Download all hospital reports as a ZIP file
+exports.downloadHospitalReportsZip = async (req, res) => {
+  try {
+    const { hospitalId: hospitalIdParam } = req.params;
+    const hospitalIdBody = req.body ? req.body.hospitalId : undefined;
+    const hospitalId = hospitalIdParam || hospitalIdBody;
+
+    if (!hospitalId) {
+      return res.status(400).json({ error: '❌ hospitalId is required' });
+    }
+
+    const hospital = await Hospital.findByPk(hospitalId, { attributes: ['id', 'name'] });
+    if (!hospital) {
+      return res.status(404).json({ error: '❌ Hospital not found' });
+    }
+
+    const reports = await Report.findAll({
+      where: { hospitalId, isDeleted: false },
+      attributes: ['id', 'fileName', 'fileUrl', 'uploadedAt']
+    });
+
+    if (!reports || reports.length === 0) {
+      return res.status(404).json({ error: '❌ No reports found for this hospital' });
+    }
+
+    const datePart = new Date().toISOString().slice(0, 10);
+    const baseName = (hospital.name || `hospital_${hospital.id}`)
+      .toString()
+      .replace(/[^a-zA-Z0-9-_ ]/g, '')
+      .trim()
+      .replace(/\s+/g, '_');
+    const zipFileName = `${baseName}_reports_${datePart}.zip`;
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipFileName}"`);
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    archive.on('error', (err) => {
+      console.error('ZIP archive error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: `❌ Error creating ZIP: ${err.message}` });
+      } else {
+        res.end();
+      }
+    });
+
+    archive.pipe(res);
+
+    // Helper to generate a safe filename for the zip entry
+    const toSafeEntryName = (report) => {
+      const uploadedAt = report.uploadedAt ? new Date(report.uploadedAt).toISOString().replace(/[:.]/g, '-') : 'unknown-date';
+      const safeName = (report.fileName || `report_${report.id}`)
+        .toString()
+        .replace(/[/\\]/g, '-')
+        .replace(/\s+/g, '_');
+      return `${uploadedAt}_${report.id}_${safeName}`;
+    };
+
+    // Stream each report file into the archive sequentially to avoid high memory/connection usage
+    for (const report of reports) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve, reject) => {
+        try {
+          https.get(report.fileUrl, (fileStream) => {
+            fileStream.on('error', reject);
+            archive.append(fileStream, { name: toSafeEntryName(report) });
+            fileStream.on('end', resolve);
+          }).on('error', reject);
+        } catch (err) {
+          reject(err);
+        }
+      });
+    }
+
+    // Finalize the archive (sends remaining data to the response)
+    archive.finalize();
+  } catch (error) {
+    console.error('Error creating hospital reports ZIP:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    } else {
+      res.end();
+    }
   }
 };

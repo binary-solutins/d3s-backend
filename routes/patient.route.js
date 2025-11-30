@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const patientController = require('../controllers/patient.controller');
+const authMiddleware = require('../middlewares/auth');
 
 /**
  * @swagger
@@ -76,7 +77,7 @@ const patientController = require('../controllers/patient.controller');
  *       500:
  *         description: Server error
  */
-router.post('/', patientController.createPatient);
+router.post('/', authMiddleware, patientController.createPatient);
 
 /**
  * @swagger
@@ -99,7 +100,7 @@ router.post('/', patientController.createPatient);
  *       500:
  *         description: Server error
  */
-router.get('/hospital/:hospitalId', patientController.getPatientsByHospital);
+router.get('/hospital/:hospitalId', authMiddleware, patientController.getPatientsByHospital);
 
 /**
  * @swagger
@@ -123,7 +124,7 @@ router.get('/hospital/:hospitalId', patientController.getPatientsByHospital);
  *       500:
  *         description: Server error
  */
-router.get('/:id', patientController.getPatientById);
+router.get('/:id', authMiddleware, patientController.getPatientById);
 
 /**
  * @swagger
@@ -178,7 +179,7 @@ router.get('/:id', patientController.getPatientById);
  *       500:
  *         description: Server error
  */
-router.put('/:id', patientController.updatePatient);
+router.put('/:id', authMiddleware, patientController.updatePatient);
 
 /**
  * @swagger
@@ -202,7 +203,7 @@ router.put('/:id', patientController.updatePatient);
  *       500:
  *         description: Server error
  */
-router.delete('/:id', patientController.deletePatient);
+router.delete('/:id', authMiddleware, patientController.deletePatient);
 
 /**
  * @swagger
@@ -230,6 +231,6 @@ router.delete('/:id', patientController.deletePatient);
  *       500:
  *         description: Server error
  */
-router.get('/search', patientController.searchPatients);
+router.get('/search', authMiddleware, patientController.searchPatients);
 
 module.exports = router;

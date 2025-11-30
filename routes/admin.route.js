@@ -44,7 +44,7 @@ router.post('/signup', adminController.signup);
  * @swagger
  * /api/admin/login:
  *   post:
- *     summary: Admin login
+ *     summary: Admin or Hospital login (unified endpoint)
  *     tags: [Admin]
  *     requestBody:
  *       required: true
@@ -58,11 +58,36 @@ router.post('/signup', adminController.signup);
  *             properties:
  *               email:
  *                 type: string
+ *                 description: Email address (admin or hospital)
  *               password:
  *                 type: string
+ *                 description: Password
  *     responses:
  *       200:
- *         description: Returns JWT token
+ *         description: Returns JWT token and user info
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                       enum: [admin, hospital]
+ *                 role:
+ *                   type: string
+ *       401:
+ *         description: Invalid credentials or account not verified
  */
 router.post('/login', adminController.login);
 

@@ -105,12 +105,20 @@ exports.getPatientsByHospital = async (req, res) => {
 exports.getPatientById = async (req, res) => {
   try {
     const { id } = req.params;
+    const hospitalId = req.hospitalId;
+    
+    const whereClause = {
+      id,
+      isDeleted: false  // Only show non-deleted patients
+    };
+    
+    // Filter by hospitalId if user is a hospital
+    if (hospitalId) {
+      whereClause.hospitalId = hospitalId;
+    }
 
     const patient = await Patient.findOne({
-      where: {
-        id,
-        isDeleted: false  // Only show non-deleted patients
-      },
+      where: whereClause,
       include: [{ model: Hospital, as: 'hospital' }]
     });
     
@@ -127,12 +135,20 @@ exports.updatePatient = async (req, res) => {
   try {
     const { id } = req.params;
     const { firstName, lastName, age, weight, height, contact, gender, address, adharNumber, email } = req.body;
+    const hospitalId = req.hospitalId;
+    
+    const whereClause = {
+      id,
+      isDeleted: false  // Only update non-deleted patients
+    };
+    
+    // Filter by hospitalId if user is a hospital
+    if (hospitalId) {
+      whereClause.hospitalId = hospitalId;
+    }
 
     const patient = await Patient.findOne({
-      where: {
-        id,
-        isDeleted: false  // Only update non-deleted patients
-      }
+      where: whereClause
     });
     
     if (!patient) return res.status(404).json({ error: '❌ Patient not found' });
@@ -160,12 +176,20 @@ exports.updatePatient = async (req, res) => {
 exports.deletePatient = async (req, res) => {
   try {
     const { id } = req.params;
+    const hospitalId = req.hospitalId;
+    
+    const whereClause = {
+      id,
+      isDeleted: false  // Only delete non-deleted patients
+    };
+    
+    // Filter by hospitalId if user is a hospital
+    if (hospitalId) {
+      whereClause.hospitalId = hospitalId;
+    }
 
     const patient = await Patient.findOne({
-      where: {
-        id,
-        isDeleted: false  // Only delete non-deleted patients
-      }
+      where: whereClause
     });
     
     if (!patient) return res.status(404).json({ error: '❌ Patient not found' });
@@ -183,12 +207,20 @@ exports.deletePatient = async (req, res) => {
 // 🔍 Search patients (excluding deleted ones)
 exports.searchPatients = async (req, res) => {
   try {
-    const { query, hospitalId } = req.query;
+    const { query, hospitalId: queryHospitalId } = req.query;
+    const authHospitalId = req.hospitalId;
+    
+    // Use hospitalId from auth if user is a hospital, otherwise use query param
+    const hospitalId = authHospitalId || queryHospitalId;
     
     const whereClause = { 
-      hospitalId,
       isDeleted: false  // Only search non-deleted patients
     };
+    
+    // Add hospitalId filter if available
+    if (hospitalId) {
+      whereClause.hospitalId = hospitalId;
+    }
     
     if (query) {
       whereClause[Op.or] = [

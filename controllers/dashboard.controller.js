@@ -4,6 +4,16 @@ const { Op, Sequelize } = require('sequelize');
 
 exports.getAdminDashboard = async (req, res) => {
   try {
+    // Check if user is hospital or admin
+    const isHospital = req.role === 'hospital';
+    const hospitalId = req.hospitalId;
+    
+    // Build where clauses based on role
+    const hospitalWhere = isHospital ? { id: hospitalId } : {};
+    const patientWhere = isHospital ? { hospitalId } : {};
+    const reportWhere = isHospital ? { hospitalId, isDeleted: false } : { isDeleted: false };
+    const doctorWhere = isHospital ? { hospitalId } : {};
+
     const [
       totalHospitals,
       totalPatients,
@@ -11,11 +21,11 @@ exports.getAdminDashboard = async (req, res) => {
       totalDoctors,
       verifiedHospitals
     ] = await Promise.all([
-      db.Hospital.count(),
-      db.Patient.count(),
-      db.Report.count({ where: { isDeleted: false }}),
-      db.Doctor.count(),
-      db.Hospital.count({ 
+      isHospital ? Promise.resolve(1) : db.Hospital.count(),
+      db.Patient.count({ where: patientWhere }),
+      db.Report.count({ where: reportWhere }),
+      db.Doctor.count({ where: doctorWhere }),
+      isHospital ? Promise.resolve(0) : db.Hospital.count({ 
         where: { isVerified: true }
       })
     ]);
@@ -23,7 +33,7 @@ exports.getAdminDashboard = async (req, res) => {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    const hospitalGrowth = await db.Hospital.findAll({
+    const hospitalGrowth = isHospital ? [] : await db.Hospital.findAll({
       attributes: [
         [Sequelize.fn('YEAR', Sequelize.col('createdAt')), 'year'],
         [Sequelize.fn('MONTH', Sequelize.col('createdAt')), 'month'],
@@ -32,7 +42,8 @@ exports.getAdminDashboard = async (req, res) => {
       where: {
         createdAt: {
           [Op.gte]: sixMonthsAgo
-        }
+        },
+        ...hospitalWhere
       },
       group: [
         Sequelize.fn('YEAR', Sequelize.col('createdAt')),
@@ -54,7 +65,8 @@ exports.getAdminDashboard = async (req, res) => {
       where: {
         createdAt: {
           [Op.gte]: sixMonthsAgo
-        }
+        },
+        ...patientWhere
       },
       group: [
         Sequelize.fn('YEAR', Sequelize.col('createdAt')),
@@ -76,7 +88,8 @@ exports.getAdminDashboard = async (req, res) => {
       where: {
         createdAt: {
           [Op.gte]: sixMonthsAgo
-        }
+        },
+        ...doctorWhere
       },
       group: [
         Sequelize.fn('YEAR', Sequelize.col('createdAt')),
@@ -98,7 +111,8 @@ exports.getAdminDashboard = async (req, res) => {
       where: {
         uploadedAt: {
           [Op.gte]: sixMonthsAgo
-        }
+        },
+        ...reportWhere
       },
       group: [
         Sequelize.fn('YEAR', Sequelize.col('uploadedAt')),

@@ -168,7 +168,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: '❌ Subscription expired' });
     }
 
-    const token = jwt.sign({ id: hospital.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ id: hospital.id, role: 'hospital' }, process.env.JWT_SECRET, { expiresIn: '1h' });
     res.json({ 
       token, 
       message: '✅ Login successful',
@@ -178,7 +178,8 @@ exports.login = async (req, res) => {
         email: hospital.email,
         phone: hospital.phone,
         imageUrl: hospital.imageUrl
-      }
+      },
+      role: 'hospital'
     });
   } catch (error) {
     console.error('Login error:', error);

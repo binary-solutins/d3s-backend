@@ -4,6 +4,15 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
+      email: {
+        type: DataTypes.STRING,
+        unique: true,
+        allowNull: true,
+      },
+      password: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
       specialization: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -15,6 +24,10 @@ module.exports = (sequelize, DataTypes) => {
       hospitalId: {
         type: DataTypes.INTEGER,
         allowNull: false,
+      },
+      isActive: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true,
       },
     });
   

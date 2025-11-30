@@ -27,14 +27,59 @@ exports.signup = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    // First check if it's an admin
     const admin = await Admin.findOne({ where: { email } });
-
-    if (!admin || !(await bcrypt.compare(password, admin.password))) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    
+    if (admin && await bcrypt.compare(password, admin.password)) {
+      // Admin login successful
+      const token = jwt.sign({ id: admin.id, role: 'admin' }, process.env.JWT_SECRET);
+      return res.json({ 
+        token, 
+        user: {
+          id: admin.id,
+          name: admin.name,
+          email: admin.email,
+          role: 'admin'
+        },
+        role: 'admin'
+      });
     }
-
-    const token = jwt.sign({ id: admin.id, role: 'admin' }, process.env.JWT_SECRET);
-    res.json({ token, admin });
+    
+    // If not admin, check if it's a hospital
+    const hospital = await Hospital.findOne({ where: { email } });
+    
+    if (hospital && await bcrypt.compare(password, hospital.password)) {
+      // Check if hospital is verified
+      if (!hospital.isVerified) {
+        return res.status(401).json({ error: '❌ Email not verified by the admin.' });
+      }
+      
+      // Check if subscription is expired
+      if (hospital.plan_time && new Date() > hospital.plan_time) {
+        await hospital.update({ isVerified: false });
+        return res.status(401).json({ error: '❌ Subscription expired' });
+      }
+      
+      // Hospital login successful
+      const token = jwt.sign({ id: hospital.id, role: 'hospital' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      return res.json({ 
+        token, 
+        user: {
+          id: hospital.id,
+          name: hospital.name,
+          email: hospital.email,
+          phone: hospital.phone,
+          imageUrl: hospital.imageUrl,
+          role: 'hospital'
+        },
+        role: 'hospital',
+        message: '✅ Login successful'
+      });
+    }
+    
+    // If neither admin nor hospital found, or password incorrect
+    return res.status(401).json({ error: 'Invalid credentials' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

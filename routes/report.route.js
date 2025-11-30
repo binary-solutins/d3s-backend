@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const reportController = require('../controllers/report.controller');
+const authMiddleware = require('../middlewares/auth');
 
 
 /**
@@ -240,6 +241,59 @@ router.post('/breast-cancer', reportController.uploadBreastCancerImagesMiddlewar
 
 /**
  * @swagger
+ * /api/reports/annotate:
+ *   post:
+ *     summary: Annotate a report with overlay PNG
+ *     tags: [Patient Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - report_id
+ *               - overlay
+ *             properties:
+ *               report_id:
+ *                 type: integer
+ *                 description: ID of the report to annotate
+ *                 example: 123
+ *               overlay:
+ *                 type: string
+ *                 description: Base64 encoded PNG overlay image (data:image/png;base64,...)
+ *                 example: "data:image/png;base64,iVBORw0KGgo..."
+ *               remarks:
+ *                 type: string
+ *                 description: Doctor remarks for the report
+ *                 example: "Some doctor note"
+ *     responses:
+ *       200:
+ *         description: Report annotated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 annotated_pdf_url:
+ *                   type: string
+ *                   example: "https://storage.azure.com/..."
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: Report not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/annotate', authMiddleware, reportController.annotateReport);
+
+/**
+ * @swagger
  * /api/reports/patient/{patientId}:
  *   post:
  *     summary: Get all reports for a specific patient
@@ -410,6 +464,38 @@ router.post('/patient/:patientId', reportController.getPatientReports);
  *         description: Server error
  */
 router.get('/:reportId', reportController.getReportById);
+
+/**
+ * @swagger
+ * /api/reports/hospital/assigned:
+ *   get:
+ *     summary: Get all assigned reports for the authenticated hospital
+ *     tags: [Patient Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: List of assigned reports for the hospital with pagination info
+ *       403:
+ *         description: Only hospitals and admins can access assigned reports
+ *       500:
+ *         description: Server error
+ */
+// CRITICAL: This route MUST come BEFORE /hospital/:hospitalId to avoid route matching issues
+router.get('/hospital/assigned', authMiddleware, reportController.getAssignedReportsForHospital);
 
 /**
  * @swagger
@@ -687,7 +773,253 @@ router.get('/:reportId/download', reportController.downloadReport);
  *       500:
  *         description: Server error
  */
-router.put('/:reportId', reportController.updateReport);
+/**
+ * @swagger
+ * /api/reports/{reportId}/assign:
+ *   post:
+ *     summary: Assign report to doctor (Hospital/Admin only)
+ *     tags: [Patient Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: reportId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - assignedDoctorId
+ *             properties:
+ *               assignedDoctorId:
+ *                 type: integer
+ *                 description: ID of the doctor to assign the report to
+ *     responses:
+ *       200:
+ *         description: Report assigned successfully
+ *       403:
+ *         description: Only hospitals and admins can assign reports
+ *       404:
+ *         description: Report or doctor not found
+ */
+router.post('/:reportId/assign', authMiddleware, reportController.assignReportToDoctor);
+
+/**
+ * @swagger
+ * /api/reports/{reportId}/unassign:
+ *   post:
+ *     summary: Unassign report from doctor (Hospital/Admin only)
+ *     tags: [Patient Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: reportId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Report unassigned successfully
+ *       403:
+ *         description: Only hospitals and admins can unassign reports
+ *       404:
+ *         description: Report not found
+ */
+router.post('/:reportId/unassign', authMiddleware, reportController.unassignReportFromDoctor);
+
+/**
+ * @swagger
+ * /api/reports/{reportId}/check:
+ *   put:
+ *     summary: Update isChecked status for assigned report (Doctor only)
+ *     tags: [Patient Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: reportId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the report
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - isChecked
+ *             properties:
+ *               isChecked:
+ *                 type: boolean
+ *                 description: Set to true if report is checked/reviewed, false otherwise
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Report checked status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "✅ Report marked as checked successfully"
+ *                 report:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     reportType:
+ *                       type: string
+ *                     patientId:
+ *                       type: integer
+ *                     patientName:
+ *                       type: string
+ *                     assignedDoctorId:
+ *                       type: integer
+ *                     isChecked:
+ *                       type: boolean
+ *                     assignedAt:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Invalid isChecked value (must be boolean)
+ *       403:
+ *         description: Only assigned doctors can update checked status
+ *       404:
+ *         description: Report not found or not assigned to the doctor
+ *       500:
+ *         description: Server error
+ */
+router.put('/:reportId/check', authMiddleware, reportController.updateReportCheckedStatus);
+
+
+
+/**
+ * @swagger
+ * /api/reports/hospital/{hospitalId}/assigned:
+ *   get:
+ *     summary: Get all assigned reports for a hospital (Admin only)
+ *     tags: [Patient Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: hospitalId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the hospital
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: List of assigned reports for the hospital with pagination info
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalItems:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 currentPage:
+ *                   type: integer
+ *                 pageSize:
+ *                   type: integer
+ *                 reports:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       title:
+ *                         type: string
+ *                       reportType:
+ *                         type: string
+ *                       patientId:
+ *                         type: integer
+ *                       patientName:
+ *                         type: string
+ *                       patient:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           firstName:
+ *                             type: string
+ *                           lastName:
+ *                             type: string
+ *                           gender:
+ *                             type: string
+ *                           age:
+ *                             type: integer
+ *                       assignedDoctorId:
+ *                         type: integer
+ *                       assignedDoctor:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           name:
+ *                             type: string
+ *                           specialization:
+ *                             type: string
+ *                       doctorId:
+ *                         type: integer
+ *                       doctor:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           name:
+ *                             type: string
+ *                           specialization:
+ *                             type: string
+ *                       fileName:
+ *                         type: string
+ *                       fileUrl:
+ *                         type: string
+ *                       uploadedAt:
+ *                         type: string
+ *                         format: date-time
+ *                       assignedAt:
+ *                         type: string
+ *                         format: date-time
+ *       400:
+ *         description: Hospital ID is required
+ *       403:
+ *         description: Only hospitals and admins can access assigned reports
+ *       404:
+ *         description: Hospital not found or no assigned reports found
+ *       500:
+ *         description: Server error
+ */
+router.get('/hospital/:hospitalId/assigned', authMiddleware, reportController.getAssignedReportsForHospital);
+
+router.put('/:reportId', authMiddleware, reportController.updateReport);
 
 /**
  * @swagger

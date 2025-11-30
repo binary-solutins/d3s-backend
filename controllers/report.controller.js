@@ -12,6 +12,8 @@ const fs = require('fs');
 const PDFDocument = require('pdfkit');
 const { v4: uuidv4 } = require('uuid');
 const archiver = require('archiver');
+const { PDFDocument: PDFLibDocument } = require('pdf-lib');
+const axios = require('axios');
 
 // Azure Blob Storage imports
 const { BlobServiceClient } = require('@azure/storage-blob');
@@ -460,25 +462,42 @@ exports.createReport = async (req, res) => {
 exports.getPatientReports = async (req, res) => {
   try {
     let { patientId } = req.params;
+    const doctorId = req.doctorId;
+    const hospitalId = req.hospitalId;
     
     patientId = patientId || req.body.patientId;
     
-    // Validate patient exists and belongs to this hospital
+    // Build where clause for patient lookup
+    const patientWhere = { id: patientId };
+    if (hospitalId && req.role !== 'admin') {
+      patientWhere.hospitalId = hospitalId;
+    }
+    
+    // Validate patient exists
     const patient = await Patient.findOne({ 
-      where: { 
-        id: patientId,
-      }
+      where: patientWhere
     });
     
     if (!patient) {
       return res.status(404).json({ error: '❌ Patient not found or not associated with this hospital' });
     }
     
+    // Build where clause for reports
+    const reportWhere = {
+      patientId,
+      isDeleted: false
+    };
+    
+    // If doctor, only show reports assigned to them
+    if (req.role === 'doctor' && doctorId) {
+      reportWhere.assignedDoctorId = doctorId;
+    } else if (hospitalId && req.role === 'hospital') {
+      // Hospital sees all reports from their hospital
+      reportWhere.hospitalId = hospitalId;
+    }
+    
     const reports = await Report.findAll({
-      where: {
-        patientId,
-        isDeleted: false
-      },
+      where: reportWhere,
       attributes: [
         'id', 'title', 'description', 'reportType', 
         'fileName', 'fileType', 'fileSize', 'fileUrl',
@@ -503,12 +522,25 @@ exports.getPatientReports = async (req, res) => {
 // Get a specific report by ID
 exports.getReportById = async (req, res) => {
   try {
-    const { reportId } = req.params; 
+    const { reportId } = req.params;
+    const doctorId = req.doctorId;
+    const hospitalId = req.hospitalId;
+    
+    const whereClause = {
+      id: reportId,
+      isDeleted: false
+    };
+    
+    // If doctor, only show reports assigned to them
+    if (req.role === 'doctor' && doctorId) {
+      whereClause.assignedDoctorId = doctorId;
+    } else if (hospitalId && req.role === 'hospital') {
+      // Hospital sees all reports from their hospital
+      whereClause.hospitalId = hospitalId;
+    }
+    
     const report = await Report.findOne({
-      where: {
-        id: reportId,
-        isDeleted: false
-      },
+      where: whereClause,
       include: [
         {
           model: Patient,
@@ -518,7 +550,7 @@ exports.getReportById = async (req, res) => {
         {
           model: Doctor,
           as: 'doctor',
-          attributes: ['id', 'firstName', 'lastName', 'specialization']
+          attributes: ['id', 'name', 'specialization', 'designation']
         }
       ]
     });
@@ -613,6 +645,190 @@ exports.downloadReport = async (req, res) => {
       res.status(500).json({ error: `❌ Error downloading file: ${err.message}` });
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Assign report to doctor (Hospital assigns report to doctor)
+exports.assignReportToDoctor = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const { assignedDoctorId } = req.body;
+    const hospitalId = req.hospitalId; // From auth middleware
+
+    // Only hospitals and admins can assign reports
+    if (req.role !== 'hospital' && req.role !== 'admin') {
+      return res.status(403).json({ error: '❌ Only hospitals and admins can assign reports' });
+    }
+
+    if (!assignedDoctorId) {
+      return res.status(400).json({ error: '❌ Doctor ID is required' });
+    }
+
+    // Find report
+    const whereClause = {
+      id: reportId,
+      isDeleted: false
+    };
+    
+    // If hospital, only allow assigning reports from their hospital
+    if (req.role === 'hospital' && hospitalId) {
+      whereClause.hospitalId = hospitalId;
+    }
+
+    const report = await Report.findOne({ where: whereClause });
+    
+    if (!report) {
+      return res.status(404).json({ error: '❌ Report not found' });
+    }
+
+    // Validate doctor exists and belongs to the same hospital
+    const doctor = await Doctor.findOne({
+      where: {
+        id: assignedDoctorId,
+        hospitalId: report.hospitalId,
+        isActive: true
+      }
+    });
+
+    if (!doctor) {
+      return res.status(404).json({ error: '❌ Doctor not found or not active in this hospital' });
+    }
+
+    // Assign report to doctor
+    await report.update({
+      assignedDoctorId: assignedDoctorId,
+      assignedAt: new Date()
+    });
+
+    res.status(200).json({
+      message: '✅ Report assigned to doctor successfully',
+      report: {
+        id: report.id,
+        title: report.title,
+        assignedDoctorId: report.assignedDoctorId,
+        assignedAt: report.assignedAt,
+        doctor: {
+          id: doctor.id,
+          name: doctor.name,
+          specialization: doctor.specialization
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Unassign report from doctor
+exports.unassignReportFromDoctor = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const hospitalId = req.hospitalId;
+
+    // Only hospitals and admins can unassign reports
+    if (req.role !== 'hospital' && req.role !== 'admin') {
+      return res.status(403).json({ error: '❌ Only hospitals and admins can unassign reports' });
+    }
+
+    const whereClause = {
+      id: reportId,
+      isDeleted: false
+    };
+    
+    if (req.role === 'hospital' && hospitalId) {
+      whereClause.hospitalId = hospitalId;
+    }
+
+    const report = await Report.findOne({ where: whereClause });
+    
+    if (!report) {
+      return res.status(404).json({ error: '❌ Report not found' });
+    }
+
+    // Unassign report
+    await report.update({
+      assignedDoctorId: null,
+      assignedAt: null,
+      isChecked: false // Reset isChecked when unassigned
+    });
+
+    res.status(200).json({
+      message: '✅ Report unassigned from doctor successfully',
+      report: {
+        id: report.id,
+        title: report.title,
+        assignedDoctorId: null
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Update isChecked status for assigned report (Only assigned doctor can update)
+exports.updateReportCheckedStatus = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const { isChecked } = req.body;
+    const doctorId = req.doctorId; // From auth middleware
+
+    // Only doctors can update isChecked status
+    if (req.role !== 'doctor' || !doctorId) {
+      return res.status(403).json({ 
+        error: '❌ Only assigned doctors can update the checked status of reports' 
+      });
+    }
+
+    // Validate isChecked is a boolean
+    if (typeof isChecked !== 'boolean') {
+      return res.status(400).json({ 
+        error: '❌ isChecked must be a boolean value (true or false)' 
+      });
+    }
+
+    // Find report that is assigned to this doctor
+    const report = await Report.findOne({
+      where: {
+        id: reportId,
+        assignedDoctorId: doctorId,
+        isDeleted: false
+      },
+      include: [
+        {
+          model: Patient,
+          as: 'patient',
+          attributes: ['id', 'firstName', 'lastName']
+        }
+      ]
+    });
+
+    if (!report) {
+      return res.status(404).json({ 
+        error: '❌ Report not found or not assigned to you' 
+      });
+    }
+
+    // Update isChecked status
+    await report.update({
+      isChecked: isChecked
+    });
+
+    res.status(200).json({
+      message: `✅ Report ${isChecked ? 'marked as checked' : 'marked as unchecked'} successfully`,
+      report: {
+        id: report.id,
+        title: report.title,
+        reportType: report.reportType,
+        patientId: report.patientId,
+        patientName: `${report.patient.firstName} ${report.patient.lastName}`,
+        assignedDoctorId: report.assignedDoctorId,
+        isChecked: report.isChecked,
+        assignedAt: report.assignedAt
+      }
+    });
+  } catch (error) {
+    console.error('Error updating report checked status:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -739,13 +955,23 @@ exports.permanentDeleteReport = async (req, res) => {
 exports.searchReports = async (req, res) => {
   try {
     const { patientId, doctorId, reportType, startDate, endDate, query } = req.query;
-    let hospitalId = req.hospitalId; // From auth middleware
-    hospitalId = hospitalId || req.body.hospitalId;
+    const authDoctorId = req.doctorId;
+    const authHospitalId = req.hospitalId;
     
     const whereClause = {
-      hospitalId,
       isDeleted: false
     };
+    
+    // If doctor, only show reports assigned to them
+    if (req.role === 'doctor' && authDoctorId) {
+      whereClause.assignedDoctorId = authDoctorId;
+    } else if (authHospitalId && req.role === 'hospital') {
+      // Hospital sees all reports from their hospital
+      whereClause.hospitalId = authHospitalId;
+    } else if (req.body.hospitalId && req.role === 'admin') {
+      // Admin can filter by hospitalId if provided
+      whereClause.hospitalId = req.body.hospitalId;
+    }
     
     // Add filters to the where clause
     if (patientId) whereClause.patientId = patientId;
@@ -779,7 +1005,7 @@ exports.searchReports = async (req, res) => {
         {
           model: Doctor,
           as: 'doctor',
-          attributes: ['id', 'firstName', 'lastName', 'specialization']
+          attributes: ['id', 'name', 'specialization', 'designation']
         }
       ],
       order: [['uploadedAt', 'DESC']]
@@ -790,6 +1016,208 @@ exports.searchReports = async (req, res) => {
       reports
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get all assigned reports for a hospital
+exports.getAssignedReportsForHospital = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    const offset = (page - 1) * pageSize;
+
+    // Debug logging
+    console.log('=== getAssignedReportsForHospital DEBUG ===');
+    console.log('req.role:', req.role);
+    console.log('req.hospitalId:', req.hospitalId);
+    console.log('req.user:', req.user ? { id: req.user.id } : 'null');
+    console.log('req.hospital:', req.hospital ? { id: req.hospital.id } : 'null');
+    console.log('req.params.hospitalId:', req.params.hospitalId);
+    console.log('req.path:', req.path);
+    console.log('req.url:', req.url);
+    console.log('req.originalUrl:', req.originalUrl);
+    console.log('==========================================');
+
+    // Check if route was incorrectly matched (hospitalId param is "assigned")
+    if (req.params.hospitalId === 'assigned') {
+      console.error('❌ Route matching error: /hospital/assigned was matched as /hospital/:hospitalId/assigned');
+      // This means the route order is wrong or Express matched incorrectly
+      // Force use hospital role logic
+      if (req.role === 'hospital') {
+        req.params.hospitalId = undefined; // Clear the incorrect param
+      }
+    }
+
+    // Only hospitals and admins can access this endpoint
+    if (req.role !== 'hospital' && req.role !== 'admin') {
+      return res.status(403).json({ error: '❌ Only hospitals and admins can access assigned reports' });
+    }
+
+    // Determine hospitalId based on role
+    let hospitalId;
+    
+    // STRICT CHECK: If role is hospital, we MUST use token hospitalId, NEVER validate, NEVER use URL param
+    if (req.role === 'hospital') {
+      // For hospitals, ALWAYS use the hospitalId from auth middleware (already validated by auth)
+      // IGNORE any hospitalId in URL params - hospitals can only see their own reports
+      // Try multiple sources in order of preference
+      hospitalId = req.hospitalId || req.hospital?.id || req.user?.id;
+      
+      if (!hospitalId) {
+        console.error('❌ Hospital ID not found in any source');
+        return res.status(400).json({ 
+          error: '❌ Hospital ID not found in token',
+          debug: {
+            hospitalId: req.hospitalId,
+            hospitalObj: req.hospital ? { id: req.hospital.id } : null,
+            userObj: req.user ? { id: req.user.id } : null,
+            role: req.role
+          }
+        });
+      }
+      
+      // Ensure it's a number
+      hospitalId = Number(hospitalId);
+      if (isNaN(hospitalId) || hospitalId <= 0) {
+        return res.status(400).json({ error: '❌ Invalid Hospital ID in token' });
+      }
+      
+      console.log('✅ Hospital role - Using hospitalId from token:', hospitalId);
+      console.log('✅ Skipping hospital validation (already done by auth middleware)');
+      // NO hospital validation needed - auth middleware already validated it exists
+      // Proceed directly to query
+      
+    } else if (req.role === 'admin') {
+      // For admins, get hospitalId from params (URL parameter)
+      // IMPORTANT: Only execute this if role is EXACTLY 'admin'
+      if (req.role !== 'admin') {
+        console.error('❌ CRITICAL: Admin code path executed but role is:', req.role);
+        return res.status(500).json({ error: '❌ Internal server error: Invalid role check' });
+      }
+      
+      hospitalId = req.params.hospitalId;
+      
+      // Ignore if hospitalId is "assigned" (route matching error)
+      if (hospitalId === 'assigned') {
+        return res.status(400).json({ 
+          error: '❌ Invalid hospital ID. Please use /api/reports/hospital/:hospitalId/assigned with a valid hospital ID' 
+        });
+      }
+      
+      if (!hospitalId) {
+        return res.status(400).json({ error: '❌ Hospital ID is required in URL for admin requests' });
+      }
+      
+      // Convert to number
+      hospitalId = Number(hospitalId);
+      if (isNaN(hospitalId) || hospitalId <= 0) {
+        return res.status(400).json({ error: '❌ Invalid Hospital ID format' });
+      }
+      
+      // Validate hospital exists (only for admin requests)
+      console.log('Admin: Validating hospital exists with ID:', hospitalId);
+      const hospital = await Hospital.findByPk(hospitalId);
+      if (!hospital) {
+        console.error('Admin: Hospital not found with ID:', hospitalId);
+        return res.status(404).json({ error: '❌ Hospital not found' });
+      }
+      console.log('Admin: Hospital found:', hospital.id);
+      
+      console.log('✅ Admin accessing hospitalId:', hospitalId);
+    } else {
+      console.error('❌ Unexpected role:', req.role);
+      return res.status(403).json({ error: '❌ Unauthorized access' });
+    }
+
+    // If hospital role, ensure they can only see their own reports
+    const whereClause = {
+      hospitalId: hospitalId,
+      assignedDoctorId: { [Op.ne]: null }, // Only reports that are assigned
+      isDeleted: false
+    };
+
+    const { count, rows: reports } = await Report.findAndCountAll({
+      where: whereClause,
+      attributes: [
+        'id', 'title', 'reportType', 'patientId',
+        'fileName', 'fileUrl', 'uploadedAt', 'assignedAt',
+        'assignedDoctorId', 'doctorId', 'status', 'annotatedFileUrl'
+      ],
+      include: [
+        {
+          model: Patient,
+          as: 'patient',
+          attributes: ['id', 'firstName', 'lastName', 'gender', 'age']
+        },
+        {
+          model: Doctor,
+          as: 'assignedDoctor',
+          attributes: ['id', 'name', 'specialization']
+        },
+        {
+          model: Doctor,
+          as: 'doctor',
+          attributes: ['id', 'name', 'specialization'],
+          required: false
+        }
+      ],
+      order: [['assignedAt', 'DESC']],
+      limit: pageSize,
+      offset: offset
+    });
+
+    if (count === 0) {
+      return res.status(200).json({ 
+        message: 'No assigned reports found for this hospital',
+        totalItems: 0,
+        totalPages: 0,
+        currentPage: page,
+        pageSize: pageSize,
+        reports: []
+      });
+    }
+
+    res.status(200).json({
+      totalItems: count,
+      totalPages: Math.ceil(count / pageSize),
+      currentPage: page,
+      pageSize: pageSize,
+      reports: reports.map(report => ({
+        id: report.id,
+        title: report.title,
+        reportType: report.reportType,
+        patientId: report.patientId,
+        patientName: `${report.patient.firstName} ${report.patient.lastName}`,
+        patient: {
+          id: report.patient.id,
+          firstName: report.patient.firstName,
+          lastName: report.patient.lastName,
+          gender: report.patient.gender,
+          age: report.patient.age
+        },
+        assignedDoctorId: report.assignedDoctorId,
+        assignedDoctor: report.assignedDoctor ? {
+          id: report.assignedDoctor.id,
+          name: report.assignedDoctor.name,
+          specialization: report.assignedDoctor.specialization
+        } : null,
+        doctorId: report.doctorId,
+        doctor: report.doctor ? {
+          id: report.doctor.id,
+          name: report.doctor.name,
+          specialization: report.doctor.specialization
+        } : null,
+        fileName: report.fileName,
+        fileUrl: report.fileUrl,
+        uploadedAt: report.uploadedAt,
+        assignedAt: report.assignedAt,
+        status: report.status,
+        annotatedFileUrl: report.annotatedFileUrl
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching assigned reports for hospital:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -878,5 +1306,123 @@ exports.downloadHospitalReportsZip = async (req, res) => {
     } else {
       res.end();
     }
+  }
+};
+
+// Annotate report with overlay PNG
+exports.annotateReport = async (req, res) => {
+  try {
+    const { report_id, overlay, remarks } = req.body;
+
+    // Validate input
+    if (!report_id || !overlay) {
+      return res.status(400).json({ error: '❌ report_id and overlay are required' });
+    }
+
+    // Fetch the report
+    const report = await Report.findOne({
+      where: {
+        id: report_id,
+        isDeleted: false
+      }
+    });
+
+    if (!report) {
+      return res.status(404).json({ error: '❌ Report not found' });
+    }
+
+    // Get the original PDF URL
+    const fileUrl = report.fileUrl;
+    if (!fileUrl) {
+      return res.status(400).json({ error: '❌ Report file URL not found' });
+    }
+
+    // Download the original PDF from Azure Blob
+    let originalPdfBuffer;
+    try {
+      const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+      originalPdfBuffer = Buffer.from(response.data);
+    } catch (error) {
+      console.error('Error downloading PDF from Azure:', error);
+      return res.status(500).json({ error: '❌ Failed to download original PDF from Azure' });
+    }
+
+    // Clean the overlay base64
+    const overlayBase64 = overlay.split(',')[1];
+    if (!overlayBase64) {
+      return res.status(400).json({ error: '❌ Invalid overlay format. Expected data:image/png;base64,...' });
+    }
+
+    let overlayBuffer;
+    try {
+      overlayBuffer = Buffer.from(overlayBase64, 'base64');
+    } catch (error) {
+      console.error('Error decoding overlay:', error);
+      return res.status(400).json({ error: '❌ Failed to decode overlay base64' });
+    }
+
+    // Merge overlay PNG onto the original PDF using pdf-lib
+    let annotatedPdfBuffer;
+    try {
+      const pdfDoc = await PDFLibDocument.load(originalPdfBuffer);
+      const png = await pdfDoc.embedPng(overlayBuffer);
+
+      const page = pdfDoc.getPage(0);
+      const { width, height } = page.getSize();
+
+      page.drawImage(png, {
+        x: 0,
+        y: 0,
+        width,
+        height
+      });
+
+      const finalPdf = await pdfDoc.save();
+      annotatedPdfBuffer = Buffer.from(finalPdf);
+    } catch (error) {
+      console.error('Error merging PDF with overlay:', error);
+      return res.status(500).json({ error: '❌ Failed to merge overlay with PDF' });
+    }
+
+    // Upload the new annotated PDF to Azure using existing upload helper
+    const annotatedPdfFile = {
+      buffer: annotatedPdfBuffer,
+      originalname: `annotated-report-${report_id}.pdf`,
+      mimetype: 'application/pdf',
+      size: annotatedPdfBuffer.length
+    };
+
+    let annotatedFileUrl;
+    try {
+      const uploadResult = await uploadToAzureBlob(annotatedPdfFile, report.patientId, 'annotated_report');
+      annotatedFileUrl = uploadResult.fileUrl;
+    } catch (error) {
+      console.error('Error uploading annotated PDF to Azure:', error);
+      return res.status(500).json({ error: '❌ Failed to upload annotated PDF to Azure' });
+    }
+
+    // Update the Report record
+    try {
+      await report.update({
+        annotatedFileUrl: annotatedFileUrl,
+        remarks: remarks || null,
+        status: 'reviewed',
+        reviewedAt: new Date(),
+        isChecked: true,
+        doctorId: req.user.id
+      });
+    } catch (error) {
+      console.error('Error updating report:', error);
+      return res.status(500).json({ error: '❌ Failed to update report record' });
+    }
+
+    // Return success response
+    res.status(200).json({
+      success: true,
+      annotated_pdf_url: annotatedFileUrl
+    });
+  } catch (error) {
+    console.error('Error in annotateReport:', error);
+    res.status(500).json({ error: error.message || '❌ Internal server error' });
   }
 };

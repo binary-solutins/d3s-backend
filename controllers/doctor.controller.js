@@ -170,14 +170,13 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Generate JWT token
+    // Generate JWT token (never expires)
     const token = jwt.sign(
       { 
         id: doctor.id, 
         role: 'doctor' 
       }, 
-      process.env.JWT_SECRET, 
-      { expiresIn: '24h' }
+      process.env.JWT_SECRET
     );
     
     // Remove password from response

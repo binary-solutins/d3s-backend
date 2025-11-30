@@ -62,7 +62,7 @@ exports.login = async (req, res) => {
       }
       
       // Hospital login successful
-      const token = jwt.sign({ id: hospital.id, role: 'hospital' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const token = jwt.sign({ id: hospital.id, role: 'hospital' }, process.env.JWT_SECRET);
       return res.json({ 
         token, 
         user: {

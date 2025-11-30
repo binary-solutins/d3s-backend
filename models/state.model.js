@@ -15,7 +15,6 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: 1,
     }
   }, {
-    tableName: 'states',
     timestamps: false
   });
 

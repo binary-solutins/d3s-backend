@@ -114,7 +114,6 @@ module.exports = (sequelize, DataTypes) => {
         }
     }, {
         // Model options
-        tableName: 'appointments',
         timestamps: true,
         indexes: [
             {

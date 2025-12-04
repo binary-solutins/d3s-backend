@@ -1228,6 +1228,10 @@ exports.downloadHospitalReportsZip = async (req, res) => {
     const { hospitalId: hospitalIdParam } = req.params;
     const hospitalIdBody = req.body ? req.body.hospitalId : undefined;
     const hospitalId = hospitalIdParam || hospitalIdBody;
+    
+    // Get date filters from query params or body
+    const startDate = req.query.startDate || (req.body ? req.body.startDate : undefined);
+    const endDate = req.query.endDate || (req.body ? req.body.endDate : undefined);
 
     if (!hospitalId) {
       return res.status(400).json({ error: '❌ hospitalId is required' });
@@ -1238,8 +1242,28 @@ exports.downloadHospitalReportsZip = async (req, res) => {
       return res.status(404).json({ error: '❌ Hospital not found' });
     }
 
+    // Build where clause with date filters
+    const whereClause = {
+      hospitalId,
+      isDeleted: false
+    };
+
+    // Add date range filter if provided
+    if (startDate || endDate) {
+      whereClause.uploadedAt = {};
+      if (startDate) {
+        whereClause.uploadedAt[Op.gte] = new Date(startDate);
+      }
+      if (endDate) {
+        // Set endDate to end of day (23:59:59.999) to include the entire end date
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        whereClause.uploadedAt[Op.lte] = endDateTime;
+      }
+    }
+
     const reports = await Report.findAll({
-      where: { hospitalId, isDeleted: false },
+      where: whereClause,
       attributes: ['id', 'fileName', 'fileUrl', 'uploadedAt']
     });
 
@@ -1253,7 +1277,16 @@ exports.downloadHospitalReportsZip = async (req, res) => {
       .replace(/[^a-zA-Z0-9-_ ]/g, '')
       .trim()
       .replace(/\s+/g, '_');
-    const zipFileName = `${baseName}_reports_${datePart}.zip`;
+    
+    // Include date range in filename if filters are applied
+    let dateRangeSuffix = '';
+    if (startDate || endDate) {
+      const start = startDate ? startDate.slice(0, 10) : 'all';
+      const end = endDate ? endDate.slice(0, 10) : 'all';
+      dateRangeSuffix = `_${start}_to_${end}`;
+    }
+    
+    const zipFileName = `${baseName}_reports${dateRangeSuffix}_${datePart}.zip`;
 
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${zipFileName}"`);

@@ -583,7 +583,7 @@ router.get('/hospital/:hospitalId', reportController.getReportsByHospitalId);
  * @swagger
  * /api/reports/hospital/{hospitalId}/zip:
  *   get:
- *     summary: Download all reports for a hospital as a ZIP
+ *     summary: Download all reports for a hospital as a ZIP (with optional date filters)
  *     tags: [Patient Reports]
  *     security:
  *       - bearerAuth: []
@@ -594,6 +594,20 @@ router.get('/hospital/:hospitalId', reportController.getReportsByHospitalId);
  *         schema:
  *           type: integer
  *         description: ID of the hospital
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for filtering reports (YYYY-MM-DD). Only reports uploaded on or after this date will be included.
+ *         example: "2024-01-01"
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for filtering reports (YYYY-MM-DD). Only reports uploaded on or before this date will be included.
+ *         example: "2024-12-31"
  *     responses:
  *       200:
  *         description: ZIP archive of hospital reports
@@ -620,7 +634,7 @@ router.get('/hospital/:hospitalId/zip', reportController.downloadHospitalReports
  * @swagger
  * /api/reports/hospital/zip:
  *   post:
- *     summary: Download all reports for a hospital as a ZIP (body)
+ *     summary: Download all reports for a hospital as a ZIP with optional date filters (body)
  *     tags: [Patient Reports]
  *     security:
  *       - bearerAuth: []
@@ -636,6 +650,16 @@ router.get('/hospital/:hospitalId/zip', reportController.downloadHospitalReports
  *               hospitalId:
  *                 type: integer
  *                 description: ID of the hospital
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Start date for filtering reports (YYYY-MM-DD). Only reports uploaded on or after this date will be included.
+ *                 example: "2024-01-01"
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *                 description: End date for filtering reports (YYYY-MM-DD). Only reports uploaded on or before this date will be included.
+ *                 example: "2024-12-31"
  *     responses:
  *       200:
  *         description: ZIP archive of hospital reports

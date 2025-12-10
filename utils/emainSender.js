@@ -8,12 +8,13 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendEmail = async (to, subject, text) => {
+const sendEmail = async (to, subject, text, html) => {
   await transporter.sendMail({
     from: `"D3S App" <${process.env.EMAIL_USER}>`,
     to,
     subject,
-    text,
+    text: text || (html ? html.replace(/<[^>]*>/g, '') : ''),
+    html: html || text,
   });
 };
 

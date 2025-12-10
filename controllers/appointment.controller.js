@@ -14,10 +14,10 @@ function generateAppointmentEmail({ name, service, date, time, address, notes, s
   switch (action) {
     case 'booked':
       actionTitle = 'Appointment Booked Successfully!';
-      intro = `Dear <b>${name}</b>,<br>We are delighted to confirm your appointment.`;
+      intro = 'Dear Customer,';
       color = '#4CAF50';
       icon = '✅';
-      mainMessage = 'Your appointment has been <b>booked</b> and is currently <b>pending confirmation</b>. We look forward to serving you!';
+      mainMessage = 'Thank you for booking your health screening with us.<br><br>Your appointment has been successfully booked/confirmed.<br><br>Our executive will contact you soon for further process.';
       break;
     case 'updated':
       actionTitle = 'Appointment Updated';
@@ -78,6 +78,34 @@ function generateAppointmentEmail({ name, service, date, time, address, notes, s
   };
   const prettyTime = timeNames[time] || time;
 
+  // Simple template for booked appointments
+  if (action === 'booked') {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #ffffff;">
+        <div style="font-family: Arial, Helvetica, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 30px;">
+          <div style="margin-bottom: 32px;">
+            <p style="font-size: 16px; color: #2c3e50; margin: 0 0 16px 0; line-height: 1.6;">Dear Customer,</p>
+            <p style="font-size: 16px; color: #2c3e50; margin: 0 0 16px 0; line-height: 1.6;">Thank you for booking your health screening with us.</p>
+            <p style="font-size: 16px; color: #2c3e50; margin: 0 0 16px 0; line-height: 1.6;">Your appointment has been successfully booked/confirmed.</p>
+            <p style="font-size: 16px; color: #2c3e50; margin: 0; line-height: 1.6;">Our executive will contact you soon for further process.</p>
+          </div>
+          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e8e8e8;">
+            <p style="font-size: 16px; color: #2c3e50; margin: 0 0 8px 0; font-weight: 500;">Team D3S Healthcare</p>
+            <p style="font-size: 14px; color: #7f8c8d; margin: 0; line-height: 1.6;">For any queries contact us at <a href="tel:+916355462935" style="color: #2c3e50; text-decoration: none;">+91 6355 462 935</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  // Detailed template for other actions (updated, status, deleted)
   return `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 540px; margin: 32px auto; border:1px solid #e0e0e0; border-radius:12px; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.06); background:#fff;">
       <div style="background:${color};color:#fff;padding:24px 32px;display:flex;align-items:center;">

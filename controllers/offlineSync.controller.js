@@ -147,7 +147,16 @@ exports.syncPatient = async (req, res) => {
       height, 
       address, 
       adharNumber, 
-      email 
+      email,
+      familyHistoryOfCancer,
+      breastLump,
+      breastPain,
+      changeInBreastAppearance,
+      breastSkinChanges,
+      nippleDischarge,
+      nippleSymptoms,
+      previousBreastScreening,
+      previousBreastProceduresOrAbnormalReport
     } = req.body;
 
     // Validate required fields
@@ -184,6 +193,15 @@ exports.syncPatient = async (req, res) => {
       address: address || null,
       adharNumber: adharNumber || null,
       email: email || null,
+      familyHistoryOfCancer: familyHistoryOfCancer ?? null,
+      breastLump: breastLump ?? null,
+      breastPain: breastPain ?? null,
+      changeInBreastAppearance: changeInBreastAppearance ?? null,
+      breastSkinChanges: breastSkinChanges ?? null,
+      nippleDischarge: nippleDischarge ?? null,
+      nippleSymptoms: nippleSymptoms ?? null,
+      previousBreastScreening: previousBreastScreening ?? null,
+      previousBreastProceduresOrAbnormalReport: previousBreastProceduresOrAbnormalReport ?? null,
       isDeleted: false
     });
 

@@ -66,6 +66,51 @@ const authMiddleware = require('../middlewares/auth');
  *                 type: string
  *                 format: email
  *                 example: "alice@example.com"
+ *               familyHistoryOfCancer:
+ *                 type: boolean
+ *                 nullable: true
+ *                 description: Has anyone in your family had breast or ovarian cancer?
+ *                 example: true
+ *               breastLump:
+ *                 type: boolean
+ *                 nullable: true
+ *                 description: Have you noticed any lump or thickening in either breast?
+ *                 example: false
+ *               breastPain:
+ *                 type: boolean
+ *                 nullable: true
+ *                 description: Do you currently have breast pain?
+ *                 example: false
+ *               changeInBreastAppearance:
+ *                 type: boolean
+ *                 nullable: true
+ *                 description: Have you noticed any change in breast size or shape?
+ *                 example: false
+ *               breastSkinChanges:
+ *                 type: boolean
+ *                 nullable: true
+ *                 description: Have you noticed redness, dimpling, or an orange-peel appearance of the breast skin?
+ *                 example: false
+ *               nippleDischarge:
+ *                 type: boolean
+ *                 nullable: true
+ *                 description: Have you experienced any nipple discharge?
+ *                 example: false
+ *               nippleSymptoms:
+ *                 type: boolean
+ *                 nullable: true
+ *                 description: Do you have pain, cracking, itching, or discomfort around the nipple?
+ *                 example: false
+ *               previousBreastScreening:
+ *                 type: boolean
+ *                 nullable: true
+ *                 description: Have you ever undergone mammography, breast ultrasound, or any breast screening test?
+ *                 example: false
+ *               previousBreastProceduresOrAbnormalReport:
+ *                 type: boolean
+ *                 nullable: true
+ *                 description: Have you ever had breast surgery, biopsy, or an abnormal breast report?
+ *                 example: false
  *               hospitalId:
  *                 type: integer
  *                 example: 1
@@ -171,6 +216,33 @@ router.get('/:id', authMiddleware, patientController.getPatientById);
  *               email:
  *                 type: string
  *                 format: email
+ *               familyHistoryOfCancer:
+ *                 type: boolean
+ *                 nullable: true
+ *               breastLump:
+ *                 type: boolean
+ *                 nullable: true
+ *               breastPain:
+ *                 type: boolean
+ *                 nullable: true
+ *               changeInBreastAppearance:
+ *                 type: boolean
+ *                 nullable: true
+ *               breastSkinChanges:
+ *                 type: boolean
+ *                 nullable: true
+ *               nippleDischarge:
+ *                 type: boolean
+ *                 nullable: true
+ *               nippleSymptoms:
+ *                 type: boolean
+ *                 nullable: true
+ *               previousBreastScreening:
+ *                 type: boolean
+ *                 nullable: true
+ *               previousBreastProceduresOrAbnormalReport:
+ *                 type: boolean
+ *                 nullable: true
  *     responses:
  *       200:
  *         description: Patient updated

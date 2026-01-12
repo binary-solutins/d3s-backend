@@ -47,6 +47,52 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    // Optional Breast Cancer Screening Questions (nullable so existing data isn't affected)
+    familyHistoryOfCancer: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: null,
+    },
+    breastLump: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: null,
+    },
+    breastPain: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: null,
+    },
+    changeInBreastAppearance: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: null,
+    },
+    breastSkinChanges: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: null,
+    },
+    nippleDischarge: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: null,
+    },
+    nippleSymptoms: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: null,
+    },
+    previousBreastScreening: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: null,
+    },
+    previousBreastProceduresOrAbnormalReport: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: null,
+    },
     isDeleted: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

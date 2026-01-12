@@ -4,7 +4,28 @@ const { Op } = require('sequelize');
 // 👶 Create a new patient
 exports.createPatient = async (req, res) => {
   try {
-    const { firstName, lastName, age, weight, height, contact, gender, address, adharNumber, email, hospitalId } = req.body;
+    const {
+      firstName,
+      lastName,
+      age,
+      weight,
+      height,
+      contact,
+      gender,
+      address,
+      adharNumber,
+      email,
+      hospitalId,
+      familyHistoryOfCancer,
+      breastLump,
+      breastPain,
+      changeInBreastAppearance,
+      breastSkinChanges,
+      nippleDischarge,
+      nippleSymptoms,
+      previousBreastScreening,
+      previousBreastProceduresOrAbnormalReport
+    } = req.body;
 
     console.log('📥 Received request to create patient with data:', {
       firstName,
@@ -17,7 +38,16 @@ exports.createPatient = async (req, res) => {
       address,
       adharNumber,
       email,
-      hospitalId
+      hospitalId,
+      familyHistoryOfCancer,
+      breastLump,
+      breastPain,
+      changeInBreastAppearance,
+      breastSkinChanges,
+      nippleDischarge,
+      nippleSymptoms,
+      previousBreastScreening,
+      previousBreastProceduresOrAbnormalReport
     });
 
     const hospital = await Hospital.findByPk(hospitalId);
@@ -41,6 +71,15 @@ exports.createPatient = async (req, res) => {
       adharNumber, 
       email, 
       hospitalId,
+      familyHistoryOfCancer,
+      breastLump,
+      breastPain,
+      changeInBreastAppearance,
+      breastSkinChanges,
+      nippleDischarge,
+      nippleSymptoms,
+      previousBreastScreening,
+      previousBreastProceduresOrAbnormalReport,
       isDeleted: false
     });
     
@@ -134,7 +173,27 @@ exports.getPatientById = async (req, res) => {
 exports.updatePatient = async (req, res) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, age, weight, height, contact, gender, address, adharNumber, email } = req.body;
+    const {
+      firstName,
+      lastName,
+      age,
+      weight,
+      height,
+      contact,
+      gender,
+      address,
+      adharNumber,
+      email,
+      familyHistoryOfCancer,
+      breastLump,
+      breastPain,
+      changeInBreastAppearance,
+      breastSkinChanges,
+      nippleDischarge,
+      nippleSymptoms,
+      previousBreastScreening,
+      previousBreastProceduresOrAbnormalReport
+    } = req.body;
     const hospitalId = req.hospitalId;
     
     const whereClause = {
@@ -163,7 +222,16 @@ exports.updatePatient = async (req, res) => {
       gender, 
       address, 
       adharNumber, 
-      email 
+      email,
+      familyHistoryOfCancer,
+      breastLump,
+      breastPain,
+      changeInBreastAppearance,
+      breastSkinChanges,
+      nippleDischarge,
+      nippleSymptoms,
+      previousBreastScreening,
+      previousBreastProceduresOrAbnormalReport
     });
     
     res.status(200).json(patient);

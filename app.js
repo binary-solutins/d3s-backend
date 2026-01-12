@@ -87,7 +87,7 @@ app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 // 🧩 Database Sync
 // Use { alter: false } to create missing tables without altering existing ones
 // This ensures all tables (Reports, Orders, etc.) are created if they don't exist
-db.sequelize.sync({ alter: false })
+db.sequelize.sync({ alter: true })
   .then(() => {
     console.log('✅ Database synced successfully');
   })

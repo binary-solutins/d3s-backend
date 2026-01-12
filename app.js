@@ -85,11 +85,22 @@ app.use('/api/offline', require('./routes/offlineSync.route'));
 app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
 // 🧩 Database Sync
-// Use { alter: false } to create missing tables without altering existing ones
-// This ensures all tables (Reports, Orders, etc.) are created if they don't exist
-db.sequelize.sync({ alter: true })
-  .then(() => {
-    console.log('✅ Database synced successfully');
+// IMPORTANT (prod safety):
+// - Full `alter: true` can fail on MySQL if there is existing inconsistent FK data (e.g. Doctors.hospitalId not matching Hospitals.id).
+// - For this change we only need to add optional columns to Patients, so we keep global sync safe and only alter the Patient table.
+db.sequelize.sync({ alter: false })
+  .then(async () => {
+    try {
+      // Apply schema changes only to Patient (adds new optional columns without touching other tables/FKs)
+      if (db.Patient?.sync) {
+        await db.Patient.sync({ alter: true });
+        console.log('✅ Patient table altered successfully');
+      }
+      console.log('✅ Database synced successfully');
+    } catch (err) {
+      console.error('❌ Error altering Patient table:', err);
+      console.log('✅ Database synced successfully (without Patient alter)');
+    }
   })
   .catch(err => {
     console.error('❌ Error syncing database:', err);

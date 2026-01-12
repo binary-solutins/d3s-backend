@@ -124,6 +124,7 @@ exports.getPatientsByHospital = async (req, res) => {
         hospitalId,
         isDeleted: false  // Only show non-deleted patients
       },
+      order: [['createdAt', 'DESC']], // Newest patients first
       include: [{ model: Hospital, as: 'hospital' }]
     });
 

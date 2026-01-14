@@ -785,6 +785,12 @@ function getReportTemplate() {
             font-weight: 700;
         }
 
+        .qa-box {
+            color: #ff4081; /* theme pink */
+            font-size: 14px;
+            font-weight: 900;
+        }
+
         .qa-check span {
             font-weight: 500;
             font-size: 11px;
@@ -1003,8 +1009,8 @@ function getReportTemplate() {
                             <div class="qa-question-title">{{inc @index}}. {{this.title}}</div>
                             <div class="qa-question-text">{{this.text}}</div>
                           </td>
-                          <td class="qa-check">{{#if this.yes}}☑{{else}}☐{{/if}} <span>Yes</span></td>
-                          <td class="qa-check">{{#if this.no}}☑{{else}}☐{{/if}} <span>No</span></td>
+                          <td class="qa-check"><span class="qa-box">{{#if this.yes}}☑{{else}}☐{{/if}}</span> <span>Yes</span></td>
+                          <td class="qa-check"><span class="qa-box">{{#if this.no}}☑{{else}}☐{{/if}}</span> <span>No</span></td>
                         </tr>
                       {{/each}}
                   </tbody>
@@ -1019,7 +1025,7 @@ function getReportTemplate() {
 
           <footer class="footer">
               <div class="disclaimer">
-                  <span class="disclaimer-title">Disclaimer:</span> This breast health screening report is based on visual observations from the captured images, which may vary with image quality, positioning, and visibility. Findings are subject to change over time. This is not a diagnostic report and should not replace clinical evaluation or further investigations such as mammography or ultrasound.
+                  <span class="disclaimer-title">Disclaimer:</span> This breast health screening device is intended for preliminary assessment only and does not diagnose any disease. Findings are based on visual observations from captured images and may vary due to image quality, positioning, or over time. This report is not a substitute for clinical examination or diagnostic investigations such as mammography, ultrasound, or biopsy. Final interpretation and medical decisions must be made by a registered medical practitioner.
               </div>
               <div class="powered-by">
                   <span>Powered By</span>
@@ -1190,7 +1196,7 @@ function getReportTemplate() {
 
           <footer class="footer">
               <div class="disclaimer">
-                  <span class="disclaimer-title">Disclaimer:</span> This breast health screening report is based on visual observations from the captured images, which may vary with image quality, positioning, and visibility. Findings are subject to change over time. This is not a diagnostic report and should not replace clinical evaluation or further investigations such as mammography or ultrasound.
+                  <span class="disclaimer-title">Disclaimer:</span> This breast health screening device is intended for preliminary assessment only and does not diagnose any disease. Findings are based on visual observations from captured images and may vary due to image quality, positioning, or over time. This report is not a substitute for clinical examination or diagnostic investigations such as mammography, ultrasound, or biopsy. Final interpretation and medical decisions must be made by a registered medical practitioner.
               </div>
               <div class="powered-by">
                   <span>Powered By</span>

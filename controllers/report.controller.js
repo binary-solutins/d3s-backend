@@ -297,7 +297,19 @@ exports.createBreastCancerReport = async (req, res) => {
         gender: patient.gender || 'Not specified',
         age: patient.age || 'N/A',
         weight: patient.weight || 'N/A',
-        height: patient.height || 'N/A'
+        height: patient.height || 'N/A',
+
+        // Optional Breast Cancer Screening Questions (nullable booleans)
+        // NOTE: false is a valid answer; null means "not provided"
+        familyHistoryOfCancer: patient.familyHistoryOfCancer,
+        breastLump: patient.breastLump,
+        breastPain: patient.breastPain,
+        changeInBreastAppearance: patient.changeInBreastAppearance,
+        breastSkinChanges: patient.breastSkinChanges,
+        nippleDischarge: patient.nippleDischarge,
+        nippleSymptoms: patient.nippleSymptoms,
+        previousBreastScreening: patient.previousBreastScreening,
+        previousBreastProceduresOrAbnormalReport: patient.previousBreastProceduresOrAbnormalReport
       },
       doctor: {
         name: doctor.name || '',

@@ -34,6 +34,9 @@ const generateBreastCancerReport = async (reportData) => {
       const formattedDate = formatDate(currentDate);
       
       // Prepare data for the template
+      const questionnaireItems = buildBreastQuestionnaireItems(patient);
+      const hasQuestionnaireData = questionnaireItems.length > 0;
+
       const templateData = {
         title: title || "BREAST SCREENING REPORT",
         date: formattedDate,
@@ -74,20 +77,33 @@ const generateBreastCancerReport = async (reportData) => {
         leftBottomImage: processedImages.leftBottomImage || createPlaceholderImage('Left Bottom'),
         rightTopImage: processedImages.rightTopImage || createPlaceholderImage('Right Top'),
         rightCenterImage: processedImages.rightCenterImage || createPlaceholderImage('Right Center'),
-        rightBottomImage: processedImages.rightBottomImage || createPlaceholderImage('Right Bottom')
+        rightBottomImage: processedImages.rightBottomImage || createPlaceholderImage('Right Bottom'),
+
+        // Questionnaire (optional first page)
+        hasQuestionnaireData,
+        questionnaireItems
       };
       
       // Compile the template with Handlebars
+      // Helper: 0-based index -> 1-based number
+      Handlebars.registerHelper('inc', (value) => Number(value) + 1);
       const template = Handlebars.compile(templateHtml);
       const html = template(templateData);
       
       const options = {
         format: 'A4',
         printBackground: true,
+        displayHeaderFooter: true,
+        headerTemplate: '<div></div>',
+        footerTemplate: `
+          <div style="width: 100%; font-size: 9px; padding: 0 10mm; color: #555; text-align: right;">
+            Page <span class="pageNumber"></span> / <span class="totalPages"></span>
+          </div>
+        `,
         margin: {
             top: '3mm', /* Reduced from 5mm */
             right: '3mm', /* Reduced from 5mm */
-            bottom: '3mm', /* Reduced from 5mm */
+            bottom: '10mm', /* Leave room for footer page numbers */
             left: '3mm' /* Reduced from 5mm */
         },
         args: [
@@ -123,6 +139,77 @@ const generateBreastCancerReport = async (reportData) => {
     }
   });
 };
+
+/**
+ * Build questionnaire items if the patient has any of the nullable yes/no fields populated.
+ * IMPORTANT: false is a valid answer; only null/undefined means "not provided".
+ * @param {Object} patient
+ * @returns {Array<{question: string, answer: string}>}
+ */
+function buildBreastQuestionnaireItems(patient) {
+  const p = patient || {};
+
+  const fields = [
+    {
+      key: 'familyHistoryOfCancer',
+      title: 'Family History of Cancer',
+      text: 'Has anyone in your family (mother, sister, aunt, or grandmother) had breast or ovarian cancer?'
+    },
+    {
+      key: 'breastLump',
+      title: 'Breast Lump',
+      text: 'Have you noticed any lump or thickening in either breast?'
+    },
+    {
+      key: 'breastPain',
+      title: 'Breast Pain',
+      text: 'Do you currently have breast pain?'
+    },
+    {
+      key: 'changeInBreastAppearance',
+      title: 'Change in Breast Appearance',
+      text: 'Have you noticed any change in breast size or shape?'
+    },
+    {
+      key: 'breastSkinChanges',
+      title: 'Breast Skin Changes',
+      text: 'Have you noticed redness, dimpling, or an orange-peel appearance of the breast skin?'
+    },
+    {
+      key: 'nippleDischarge',
+      title: 'Nipple Discharge',
+      text: 'Have you experienced any nipple discharge?'
+    },
+    {
+      key: 'nippleSymptoms',
+      title: 'Nipple Symptoms',
+      text: 'Do you have pain, cracking, itching, or discomfort around the nipple?'
+    },
+    {
+      key: 'previousBreastScreening',
+      title: 'Previous Breast Screening',
+      text: 'Have you ever undergone mammography, breast ultrasound, or any breast screening test?'
+    },
+    {
+      key: 'previousBreastProceduresOrAbnormalReport',
+      title: 'Previous Breast Procedures or Reports',
+      text: 'Have you ever had breast surgery, biopsy, or an abnormal breast report?'
+    }
+  ];
+
+  const items = [];
+  for (const f of fields) {
+    const v = p[f.key];
+    if (v === null || v === undefined) continue;
+    items.push({
+      title: f.title,
+      text: f.text,
+      yes: Boolean(v),
+      no: !Boolean(v)
+    });
+  }
+  return items;
+}
 
 /**
  * Process all images
@@ -375,6 +462,17 @@ function getReportTemplate() {
             align-items: flex-start;
             min-height: 100vh;
         }
+
+      .page {
+          width: 100%;
+          display: flex;
+          justify-content: center;
+      }
+
+      .page.page-break {
+          page-break-after: always;
+          break-after: page;
+      }
 
       .container {
     width: 190mm; /* Reduced from 210mm */
@@ -632,6 +730,65 @@ function getReportTemplate() {
             margin: 8px 0;
         }
 
+        /* Questionnaire page */
+        .questionnaire-section {
+            margin: 12px 0;
+            padding: 0 15px;
+        }
+
+        .questionnaire-title {
+            font-size: 13px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .qa-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        .qa-table th, .qa-table td {
+            border: 1px solid #e5e7eb;
+            padding: 8px;
+            vertical-align: top;
+        }
+
+        .qa-table th {
+            background: #FFF0F5 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            text-align: left;
+            font-weight: 700;
+        }
+
+        .qa-question-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .qa-question-text {
+            font-size: 10px;
+            color: #444;
+            line-height: 1.25;
+        }
+
+        .qa-check {
+            text-align: center;
+            white-space: nowrap;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .qa-check span {
+            font-weight: 500;
+            font-size: 11px;
+            color: #111;
+            margin-left: 4px;
+        }
+
         /* Footer Section - FIXED: Positioned at bottom */
         .footer {
             display: flex;
@@ -732,172 +889,303 @@ function getReportTemplate() {
     </style>
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <div class="header-inner">
-               <div class="main-logo">
-                    <div class="main-logo-container">
-                        <img src="https://brscan.blob.core.windows.net/static-images/logo.png" alt="Main Logo">
-                    </div>
-                </div>
-                <div class="title">
-                    <h1>Breast Health Screening Report</h1>
-                    <p class="date">{{date}}</p>
-                </div>
-                <div class="hospital-logo">
-                    <div class="logo-container">
-                        <img src="{{hospitalLogo}}" alt="Hospital Logo">
-                    </div>
-                </div>
-            </div>
-        </header>
+    {{#if hasQuestionnaireData}}
+    <div class="page page-break">
+      <div class="container">
+          <header class="header">
+              <div class="header-inner">
+                <div class="main-logo">
+                      <div class="main-logo-container">
+                          <img src="https://brscan.blob.core.windows.net/static-images/logo.png" alt="Main Logo">
+                      </div>
+                  </div>
+                  <div class="title">
+                      <h1>Breast Health Screening Report</h1>
+                      <p class="date">{{date}}</p>
+                  </div>
+                  <div class="hospital-logo">
+                      <div class="logo-container">
+                          <img src="{{hospitalLogo}}" alt="Hospital Logo">
+                      </div>
+                  </div>
+              </div>
+          </header>
 
-        <div class="details-container">
-            <div class="details-box">
-                <div class="details-header">
-                    <h3>Subject Details</h3>
-                </div>
-                <div class="details-content">
-                    <div class="detail-row">
-                        <div class="detail-label">Name:</div>
-                        <div class="detail-value">{{patient.firstName}} {{patient.lastName}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Address:</div>
-                        <div class="detail-value">{{patient.address}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Contact:</div>
-                        <div class="detail-value">{{patient.contact}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Gender:</div>
-                        <div class="detail-value">{{patient.gender}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Age:</div>
-                        <div class="detail-value">{{patient.age}} Years</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Weight:</div>
-                        <div class="detail-value">{{patient.weight}} kg</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Height:</div>
-                        <div class="detail-value">{{patient.height}}</div>
-                    </div>
-                </div>
-            </div>
+          <div class="details-container">
+              <div class="details-box">
+                  <div class="details-header">
+                      <h3>Subject Details</h3>
+                  </div>
+                  <div class="details-content">
+                      <div class="detail-row">
+                          <div class="detail-label">Name:</div>
+                          <div class="detail-value">{{patient.firstName}} {{patient.lastName}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Address:</div>
+                          <div class="detail-value">{{patient.address}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Contact:</div>
+                          <div class="detail-value">{{patient.contact}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Gender:</div>
+                          <div class="detail-value">{{patient.gender}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Age:</div>
+                          <div class="detail-value">{{patient.age}} Years</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Weight:</div>
+                          <div class="detail-value">{{patient.weight}} kg</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Height:</div>
+                          <div class="detail-value">{{patient.height}}</div>
+                      </div>
+                  </div>
+              </div>
 
-            <div class="details-box">
-                <div class="details-header">
-                    <h3>Examiner Details</h3>
-                </div>
-                <div class="details-content">
-                    <div class="detail-row">
-                        <div class="detail-label">Hospital Name:</div>
-                        <div class="detail-value">{{hospital.name}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Hospital Address:</div>
-                        <div class="detail-value">{{hospital.address}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Doctor Name:</div>
-                        <div class="detail-value">{{doctor.name}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Designation:</div>
-                        <div class="detail-value">{{doctor.specialization}}</div>
-                    </div>
-                    <div class="detail-row">
-                        <div class="detail-label">Screening Place:</div>
-                        <div class="detail-value">{{hospital.name}}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+              <div class="details-box">
+                  <div class="details-header">
+                      <h3>Examiner Details</h3>
+                  </div>
+                  <div class="details-content">
+                      <div class="detail-row">
+                          <div class="detail-label">Hospital Name:</div>
+                          <div class="detail-value">{{hospital.name}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Hospital Address:</div>
+                          <div class="detail-value">{{hospital.address}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Doctor Name:</div>
+                          <div class="detail-value">{{doctor.name}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Designation:</div>
+                          <div class="detail-value">{{doctor.specialization}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Screening Place:</div>
+                          <div class="detail-value">{{hospital.name}}</div>
+                      </div>
+                  </div>
+              </div>
+          </div>
 
-        <div class="screening-section">
-          <div class="center">
-            <div class="screening-header">
-                <div class="breast-icon">
-                    <img src="{{breastIcon}}" alt="Breast Icon">
-                </div>
-                <h3>Left Breast Screening Visuals</h3>
-            </div>
-            </div>
-            <div class="images-grid">
-                <div class="image-column">
-                    <h4>I. Top Side Image</h4>
-                    <div class="image-container">
-                        <img src="{{leftTopImage}}" alt="Left Breast Top Side">
-                    </div>
-                </div>
-                <div class="image-column">
-                    <h4>II. Left Side Image</h4>
-                    <div class="image-container">
-                        <img src="{{leftCenterImage}}" alt="Left Breast Left Side">
-                    </div>
-                </div>
-                <div class="image-column">
-                    <h4>III. Right Side Image</h4>
-                    <div class="image-container">
-                        <img src="{{leftBottomImage}}" alt="Left Breast Right Side">
-                    </div>
-                </div>
-            </div>
-        </div>
+          <div class="questionnaire-section">
+              <div class="questionnaire-title">Patient Questionnaire (Yes/No)</div>
+              <table class="qa-table">
+                  <thead>
+                      <tr>
+                          <th style="width: 76%;">Question</th>
+                          <th style="width: 12%; text-align: center;">Yes</th>
+                          <th style="width: 12%; text-align: center;">No</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {{#each questionnaireItems}}
+                        <tr>
+                          <td>
+                            <div class="qa-question-title">{{inc @index}}. {{this.title}}</div>
+                            <div class="qa-question-text">{{this.text}}</div>
+                          </td>
+                          <td class="qa-check">{{#if this.yes}}☑{{else}}☐{{/if}} <span>Yes</span></td>
+                          <td class="qa-check">{{#if this.no}}☑{{else}}☐{{/if}} <span>No</span></td>
+                        </tr>
+                      {{/each}}
+                  </tbody>
+              </table>
+          </div>
 
-        <div class="screening-section">
+          <footer class="footer">
+              <div class="disclaimer">
+                  <span class="disclaimer-title">Disclaimer:</span> This breast health screening report is based on visual observations from the captured images, which may vary with image quality, positioning, and visibility. Findings are subject to change over time. This is not a diagnostic report and should not replace clinical evaluation or further investigations such as mammography or ultrasound.
+              </div>
+              <div class="powered-by">
+                  <span>Powered By</span>
+                  <div class="powered-logos">
+                      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLDJHCPEwjND1n8zRkZij43mASb-r5NFAh5A&s" alt="azure">
+                      <img src="https://static.wixstatic.com/media/048d7e_644b43b18e8347d6b2b4c65943725115~mv2.png/v1/fill/w_554,h_166,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/D3S%20Healthcare%20Logo.png" alt="d3s">
+                  </div>
+              </div>
+          </footer>
+      </div>
+    </div>
+    {{/if}}
+
+    <div class="page">
+      <div class="container">
+          <header class="header">
+              <div class="header-inner">
+                <div class="main-logo">
+                      <div class="main-logo-container">
+                          <img src="https://brscan.blob.core.windows.net/static-images/logo.png" alt="Main Logo">
+                      </div>
+                  </div>
+                  <div class="title">
+                      <h1>Breast Health Screening Report</h1>
+                      <p class="date">{{date}}</p>
+                  </div>
+                  <div class="hospital-logo">
+                      <div class="logo-container">
+                          <img src="{{hospitalLogo}}" alt="Hospital Logo">
+                      </div>
+                  </div>
+              </div>
+          </header>
+
+          <div class="details-container">
+              <div class="details-box">
+                  <div class="details-header">
+                      <h3>Subject Details</h3>
+                  </div>
+                  <div class="details-content">
+                      <div class="detail-row">
+                          <div class="detail-label">Name:</div>
+                          <div class="detail-value">{{patient.firstName}} {{patient.lastName}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Address:</div>
+                          <div class="detail-value">{{patient.address}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Contact:</div>
+                          <div class="detail-value">{{patient.contact}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Gender:</div>
+                          <div class="detail-value">{{patient.gender}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Age:</div>
+                          <div class="detail-value">{{patient.age}} Years</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Weight:</div>
+                          <div class="detail-value">{{patient.weight}} kg</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Height:</div>
+                          <div class="detail-value">{{patient.height}}</div>
+                      </div>
+                  </div>
+              </div>
+
+              <div class="details-box">
+                  <div class="details-header">
+                      <h3>Examiner Details</h3>
+                  </div>
+                  <div class="details-content">
+                      <div class="detail-row">
+                          <div class="detail-label">Hospital Name:</div>
+                          <div class="detail-value">{{hospital.name}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Hospital Address:</div>
+                          <div class="detail-value">{{hospital.address}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Doctor Name:</div>
+                          <div class="detail-value">{{doctor.name}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Designation:</div>
+                          <div class="detail-value">{{doctor.specialization}}</div>
+                      </div>
+                      <div class="detail-row">
+                          <div class="detail-label">Screening Place:</div>
+                          <div class="detail-value">{{hospital.name}}</div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <div class="screening-section">
             <div class="center">
-            <div class="screening-header">
-                <div class="breast-icon">
-                    <img src="{{breastIcon}}" alt="Breast Icon">
-                </div>
-                <h3>Right Breast Screening Visuals</h3>
-            </div>
-            </div>
-            <div class="images-grid">
-                <div class="image-column">
-                    <h4>I. Top Side Image</h4>
-                    <div class="image-container">
-                        <img src="{{rightTopImage}}" alt="Right Breast Top Side">
-                    </div>
-                </div>
-                <div class="image-column">
-                    <h4>II. Left Side Image</h4>
-                    <div class="image-container">
-                        <img src="{{rightCenterImage}}" alt="Right Breast Left Side">
-                    </div>
-                </div>
-                <div class="image-column">
-                    <h4>III. Right Side Image</h4>
-                    <div class="image-container">
-                        <img src="{{rightBottomImage}}" alt="Right Breast Right Side">
-                    </div>
-                </div>
-            </div>
-        </div>
+              <div class="screening-header">
+                  <div class="breast-icon">
+                      <img src="{{breastIcon}}" alt="Breast Icon">
+                  </div>
+                  <h3>Left Breast Screening Visuals</h3>
+              </div>
+              </div>
+              <div class="images-grid">
+                  <div class="image-column">
+                      <h4>I. Top Side Image</h4>
+                      <div class="image-container">
+                          <img src="{{leftTopImage}}" alt="Left Breast Top Side">
+                      </div>
+                  </div>
+                  <div class="image-column">
+                      <h4>II. Left Side Image</h4>
+                      <div class="image-container">
+                          <img src="{{leftCenterImage}}" alt="Left Breast Left Side">
+                      </div>
+                  </div>
+                  <div class="image-column">
+                      <h4>III. Right Side Image</h4>
+                      <div class="image-container">
+                          <img src="{{leftBottomImage}}" alt="Left Breast Right Side">
+                      </div>
+                  </div>
+              </div>
+          </div>
 
-        <div class="remarks-section">
-            <p>Remarks:</p>
-            <div class="remarks-line"></div>
-            <div class="remarks-line"></div>
-        </div>
+          <div class="screening-section">
+              <div class="center">
+              <div class="screening-header">
+                  <div class="breast-icon">
+                      <img src="{{breastIcon}}" alt="Breast Icon">
+                  </div>
+                  <h3>Right Breast Screening Visuals</h3>
+              </div>
+              </div>
+              <div class="images-grid">
+                  <div class="image-column">
+                      <h4>I. Top Side Image</h4>
+                      <div class="image-container">
+                          <img src="{{rightTopImage}}" alt="Right Breast Top Side">
+                      </div>
+                  </div>
+                  <div class="image-column">
+                      <h4>II. Left Side Image</h4>
+                      <div class="image-container">
+                          <img src="{{rightCenterImage}}" alt="Right Breast Left Side">
+                      </div>
+                  </div>
+                  <div class="image-column">
+                      <h4>III. Right Side Image</h4>
+                      <div class="image-container">
+                          <img src="{{rightBottomImage}}" alt="Right Breast Right Side">
+                      </div>
+                  </div>
+              </div>
+          </div>
 
-        <footer class="footer">
-            <div class="disclaimer">
-                <span class="disclaimer-title">Disclaimer:</span> This breast health screening report is based on visual observations from the captured images, which may vary with image quality, positioning, and visibility. Findings are subject to change over time. This is not a diagnostic report and should not replace clinical evaluation or further investigations such as mammography or ultrasound.
-            </div>
-            <div class="powered-by">
-                <span>Powered By</span>
-                <div class="powered-logos">
-                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLDJHCPEwjND1n8zRkZij43mASb-r5NFAh5A&s" alt="azure">
-                    <img src="https://static.wixstatic.com/media/048d7e_644b43b18e8347d6b2b4c65943725115~mv2.png/v1/fill/w_554,h_166,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/D3S%20Healthcare%20Logo.png" alt="d3s">
-                </div>
-            </div>
-        </footer>
+          <div class="remarks-section">
+              <p>Remarks:</p>
+              <div class="remarks-line"></div>
+              <div class="remarks-line"></div>
+          </div>
+
+          <footer class="footer">
+              <div class="disclaimer">
+                  <span class="disclaimer-title">Disclaimer:</span> This breast health screening report is based on visual observations from the captured images, which may vary with image quality, positioning, and visibility. Findings are subject to change over time. This is not a diagnostic report and should not replace clinical evaluation or further investigations such as mammography or ultrasound.
+              </div>
+              <div class="powered-by">
+                  <span>Powered By</span>
+                  <div class="powered-logos">
+                      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLDJHCPEwjND1n8zRkZij43mASb-r5NFAh5A&s" alt="azure">
+                      <img src="https://static.wixstatic.com/media/048d7e_644b43b18e8347d6b2b4c65943725115~mv2.png/v1/fill/w_554,h_166,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/D3S%20Healthcare%20Logo.png" alt="d3s">
+                  </div>
+              </div>
+          </footer>
+      </div>
     </div>
 </body>
 </html>`;

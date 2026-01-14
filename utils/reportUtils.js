@@ -787,9 +787,9 @@ function getReportTemplate() {
 
         .qa-box {
             display: inline-block;
-            width: 18px;
-            height: 18px;
-            border: 2px solid #ff4081; /* theme pink */
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f78699; /* light theme pink */
             border-radius: 4px;
             vertical-align: middle;
             position: relative;
@@ -797,14 +797,17 @@ function getReportTemplate() {
         }
 
         .qa-box.checked::after {
-            content: '✓';
+            content: '';
             position: absolute;
-            left: 3px;
-            top: -2px;
-            color: #ff4081; /* theme pink */
-            font-size: 18px;
-            font-weight: 900;
-            line-height: 1;
+            left: 4px;
+            top: 1px;
+            width: 5px;
+            height: 9px;
+            border-right: 3px solid #f78699; /* light theme pink */
+            border-bottom: 3px solid #f78699; /* light theme pink */
+            transform: rotate(45deg);
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
 
         .qa-check span {

@@ -465,13 +465,13 @@ function getReportTemplate() {
 
       .page {
           width: 100%;
-          display: flex;
-          justify-content: center;
+          display: block;
       }
 
-      .page.page-break {
-          page-break-after: always;
-          break-after: page;
+      /* Force next content onto a new page (works even if content would fit) */
+      .page-break-before {
+          page-break-before: always;
+          break-before: page;
       }
 
       .container {
@@ -851,6 +851,11 @@ function getReportTemplate() {
         background-color: #fff !important;
         padding: 0 !important;
         margin: 0 !important;
+        display: block !important; /* Important: avoid flex pagination issues */
+    }
+
+    .page {
+        display: block !important;
     }
     
     .container {
@@ -890,7 +895,7 @@ function getReportTemplate() {
 </head>
 <body>
     {{#if hasQuestionnaireData}}
-    <div class="page page-break">
+    <div class="page">
       <div class="container">
           <header class="header">
               <div class="header-inner">
@@ -1018,7 +1023,7 @@ function getReportTemplate() {
     </div>
     {{/if}}
 
-    <div class="page">
+    <div class="page {{#if hasQuestionnaireData}}page-break-before{{/if}}">
       <div class="container">
           <header class="header">
               <div class="header-inner">

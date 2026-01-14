@@ -786,7 +786,9 @@ function getReportTemplate() {
         }
 
         .qa-box {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             width: 16px;
             height: 16px;
             border: 2px solid #f78699; /* light theme pink */
@@ -796,16 +798,14 @@ function getReportTemplate() {
             background: #fff;
         }
 
-        .qa-box.checked::after {
-            content: '';
-            position: absolute;
-            left: 4px;
-            top: 1px;
+        .qa-tick {
             width: 5px;
             height: 9px;
             border-right: 3px solid #f78699; /* light theme pink */
             border-bottom: 3px solid #f78699; /* light theme pink */
             transform: rotate(45deg);
+            display: block;
+            margin-top: -1px; /* optical centering */
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
@@ -1028,8 +1028,8 @@ function getReportTemplate() {
                             <div class="qa-question-title">{{inc @index}}. {{this.title}}</div>
                             <div class="qa-question-text">{{this.text}}</div>
                           </td>
-                          <td class="qa-check"><span class="qa-box {{#if this.yes}}checked{{/if}}"></span> <span>Yes</span></td>
-                          <td class="qa-check"><span class="qa-box {{#if this.no}}checked{{/if}}"></span> <span>No</span></td>
+                          <td class="qa-check"><span class="qa-box">{{#if this.yes}}<span class="qa-tick"></span>{{/if}}</span> <span>Yes</span></td>
+                          <td class="qa-check"><span class="qa-box">{{#if this.no}}<span class="qa-tick"></span>{{/if}}</span> <span>No</span></td>
                         </tr>
                       {{/each}}
                   </tbody>

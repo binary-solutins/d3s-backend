@@ -786,9 +786,25 @@ function getReportTemplate() {
         }
 
         .qa-box {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid #ff4081; /* theme pink */
+            border-radius: 4px;
+            vertical-align: middle;
+            position: relative;
+            background: #fff;
+        }
+
+        .qa-box.checked::after {
+            content: '✓';
+            position: absolute;
+            left: 3px;
+            top: -2px;
             color: #ff4081; /* theme pink */
-            font-size: 14px;
+            font-size: 18px;
             font-weight: 900;
+            line-height: 1;
         }
 
         .qa-check span {
@@ -1009,8 +1025,8 @@ function getReportTemplate() {
                             <div class="qa-question-title">{{inc @index}}. {{this.title}}</div>
                             <div class="qa-question-text">{{this.text}}</div>
                           </td>
-                          <td class="qa-check"><span class="qa-box">{{#if this.yes}}☑{{else}}☐{{/if}}</span> <span>Yes</span></td>
-                          <td class="qa-check"><span class="qa-box">{{#if this.no}}☑{{else}}☐{{/if}}</span> <span>No</span></td>
+                          <td class="qa-check"><span class="qa-box {{#if this.yes}}checked{{/if}}"></span> <span>Yes</span></td>
+                          <td class="qa-check"><span class="qa-box {{#if this.no}}checked{{/if}}"></span> <span>No</span></td>
                         </tr>
                       {{/each}}
                   </tbody>

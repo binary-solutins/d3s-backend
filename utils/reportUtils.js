@@ -1011,6 +1011,12 @@ function getReportTemplate() {
               </table>
           </div>
 
+          <div class="remarks-section">
+              <p>Remarks:</p>
+              <div class="remarks-line"></div>
+              <div class="remarks-line"></div>
+          </div>
+
           <footer class="footer">
               <div class="disclaimer">
                   <span class="disclaimer-title">Disclaimer:</span> This breast health screening report is based on visual observations from the captured images, which may vary with image quality, positioning, and visibility. Findings are subject to change over time. This is not a diagnostic report and should not replace clinical evaluation or further investigations such as mammography or ultrasound.

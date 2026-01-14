@@ -453,22 +453,25 @@ function getReportTemplate() {
             font-family: 'Roboto', Arial, sans-serif;
             line-height: 1.3;
             color: #333;
-            background-color: #f5f5f5;
+            background-color: #fff;
             font-size: 11px;
             margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
+            padding: 0;
+            display: block; /* IMPORTANT: avoid side-by-side flex layout in PDF */
         }
 
       .page {
           width: 100%;
-          display: block;
+          display: flex;
+          justify-content: center;
       }
 
-      /* Force next content onto a new page (works even if content would fit) */
+      /* Force pagination explicitly */
+      .page-break-after {
+          page-break-after: always;
+          break-after: page;
+      }
+
       .page-break-before {
           page-break-before: always;
           break-before: page;
@@ -851,11 +854,12 @@ function getReportTemplate() {
         background-color: #fff !important;
         padding: 0 !important;
         margin: 0 !important;
-        display: block !important; /* Important: avoid flex pagination issues */
+        display: block !important; /* keep stacked pages */
     }
 
     .page {
-        display: block !important;
+        display: flex !important;
+        justify-content: center !important;
     }
     
     .container {
@@ -895,7 +899,7 @@ function getReportTemplate() {
 </head>
 <body>
     {{#if hasQuestionnaireData}}
-    <div class="page">
+    <div class="page page-break-after">
       <div class="container">
           <header class="header">
               <div class="header-inner">

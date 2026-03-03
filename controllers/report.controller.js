@@ -1409,10 +1409,19 @@ exports.annotateReport = async (req, res) => {
     // Merge overlay PNG onto the original PDF using pdf-lib
     let annotatedPdfBuffer;
     try {
+      const { page_number = 1 } = req.body;
       const pdfDoc = await PDFLibDocument.load(originalPdfBuffer);
       const png = await pdfDoc.embedPng(overlayBuffer);
 
-      const page = pdfDoc.getPage(0);
+      // pdf-lib uses 0-based indexing for pages
+      const pageIndex = Math.max(0, parseInt(page_number) - 1);
+      const pageCount = pdfDoc.getPageCount();
+      
+      if (pageIndex >= pageCount) {
+        return res.status(400).json({ error: `❌ Invalid page number. PDF only has ${pageCount} pages.` });
+      }
+
+      const page = pdfDoc.getPage(pageIndex);
       const { width, height } = page.getSize();
 
       page.drawImage(png, {

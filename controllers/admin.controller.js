@@ -109,8 +109,45 @@ exports.forgotPassword = async (req, res) => {
     
     await user.update({ resetToken, resetTokenExpiry });
     
-    await sendEmail(email, 'Password Reset', `Reset token: ${resetToken}`);
-    res.json({ message: 'Reset token sent to email' });
+    let resetUrl = '';
+    if (userType === 'doctor') {
+      resetUrl = `https://doctor.d3shealthcare.com/reset-password?token=${resetToken}`;
+    } else {
+      resetUrl = `https://admin.d3shealthcare.com/reset-password?token=${resetToken}`;
+    }
+
+    const emailHtml = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #f0f0f0; border-radius: 12px; background-color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h1 style="color: #1a73e8; margin: 0; font-size: 28px;">D3S Healthcare</h1>
+          <p style="color: #5f6368; font-size: 14px;">Hospital-Doctor-Patient Management System</p>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 25px;" />
+        <p style="font-size: 16px; color: #3c4043;">Hello,</p>
+        <p style="font-size: 16px; color: #3c4043; line-height: 1.5;">
+          We received a request to reset the password for your <strong>${userType.toUpperCase()}</strong> account. 
+          If you didn't make this request, you can safely ignore this email.
+        </p>
+        <div style="text-align: center; margin: 35px 0;">
+          <a href="${resetUrl}" style="background-color: #1a73e8; color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block; transition: background-color 0.3s;">Reset Your Password</a>
+        </div>
+        <p style="font-size: 14px; color: #5f6368; background-color: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #1a73e8;">
+          <strong>Security Note:</strong> This link will expire in 1 hour for your protection.
+        </p>
+        <p style="font-size: 12px; color: #70757a; margin-top: 30px;">
+          If the button above doesn't work, copy and paste this URL into your browser:
+          <br />
+          <span style="color: #1a73e8; word-break: break-all;">${resetUrl}</span>
+        </p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0 20px 0;" />
+        <p style="font-size: 12px; color: #9aa0a6; text-align: center;">
+          &copy; ${new Date().getFullYear()} D3S Healthcare. All rights reserved.
+        </p>
+      </div>
+    `;
+
+    await sendEmail(email, 'Password Reset Request - D3S Healthcare', `Reset your password here: ${resetUrl}`, emailHtml);
+    res.json({ message: 'Reset link sent to email' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

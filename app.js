@@ -43,7 +43,7 @@ const swaggerOptions = {
         description: '🌐 Testing server',
       },
       {
-        url: 'https://api.d3shealthcare.com/api',
+        url: 'https://api.d3shealthcare.com',
         description: '🌐 Production server',
       },
 

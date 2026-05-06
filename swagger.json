@@ -9,6 +9,10 @@
       {
         "url": "http://localhost:3000",
         "description": "Development server"
+      },
+      {
+        "url": "https://api.d3shealthcare.com/api",
+        "description": "Production server"
       }
     ]
   }

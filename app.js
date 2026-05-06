@@ -43,7 +43,7 @@ const swaggerOptions = {
         description: '🌐 Testing server',
       },
       {
-        url: 'https://d3s-backend-hwbxccckgcdbdgfr.centralindia-01.azurewebsites.net',
+        url: 'https://api.d3shealthcare.com/api',
         description: '🌐 Production server',
       },
 

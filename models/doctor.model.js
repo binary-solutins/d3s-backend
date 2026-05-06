@@ -29,6 +29,12 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.BOOLEAN,
         defaultValue: true,
       },
+      resetToken: {
+        type: DataTypes.STRING
+      },
+      resetTokenExpiry: {
+        type: DataTypes.DATE
+      }
     });
   
     Doctor.associate = (models) => {

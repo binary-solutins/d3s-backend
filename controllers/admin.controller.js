@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const db = require('../models');
 const Admin = db.Admin;
 const Hospital = db.Hospital;
+const Doctor = db.Doctor;
 const sendEmail = require('../utils/emainSender');
 
 exports.signup = async (req, res) => {
@@ -88,14 +89,25 @@ exports.login = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    const admin = await Admin.findOne({ where: { email } });
-    
-    if (!admin) return res.status(404).json({ error: 'Admin not found' });
+    let user = await Admin.findOne({ where: { email } });
+    let userType = 'admin';
 
-    const resetToken = jwt.sign({ id: admin.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    if (!user) {
+      user = await Hospital.findOne({ where: { email } });
+      userType = 'hospital';
+    }
+
+    if (!user) {
+      user = await Doctor.findOne({ where: { email } });
+      userType = 'doctor';
+    }
+    
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const resetToken = jwt.sign({ id: user.id, type: userType }, process.env.JWT_SECRET, { expiresIn: '1h' });
     const resetTokenExpiry = Date.now() + 3600000; // 1 hour
     
-    await admin.update({ resetToken, resetTokenExpiry });
+    await user.update({ resetToken, resetTokenExpiry });
     
     await sendEmail(email, 'Password Reset', `Reset token: ${resetToken}`);
     res.json({ message: 'Reset token sent to email' });
@@ -109,17 +121,29 @@ exports.resetPassword = async (req, res) => {
     const { token, newPassword } = req.body;
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    const admin = await Admin.findOne({
+    let user;
+    const query = {
       where: {
         resetToken: token,
         resetTokenExpiry: { [db.Sequelize.Op.gt]: Date.now() }
       }
-    });
+    };
 
-    if (!admin) return res.status(400).json({ error: 'Invalid or expired token' });
+    if (decoded.type === 'admin') {
+      user = await Admin.findOne(query);
+    } else if (decoded.type === 'hospital') {
+      user = await Hospital.findOne(query);
+    } else if (decoded.type === 'doctor') {
+      user = await Doctor.findOne(query);
+    } else {
+      // Fallback for old tokens or if type is missing
+      user = await Admin.findOne(query) || await Hospital.findOne(query) || await Doctor.findOne(query);
+    }
+
+    if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await admin.update({
+    await user.update({
       password: hashedPassword,
       resetToken: null,
       resetTokenExpiry: null

@@ -96,6 +96,14 @@ db.sequelize.sync({ alter: false })
         await db.Patient.sync({ alter: true });
         console.log('✅ Patient table altered successfully');
       }
+      if (db.Hospital?.sync) {
+        await db.Hospital.sync({ alter: true });
+        console.log('✅ Hospital table altered successfully');
+      }
+      if (db.Doctor?.sync) {
+        await db.Doctor.sync({ alter: true });
+        console.log('✅ Doctor table altered successfully');
+      }
       console.log('✅ Database synced successfully');
     } catch (err) {
       console.error('❌ Error altering Patient table:', err);

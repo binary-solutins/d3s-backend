@@ -50,6 +50,12 @@ module.exports = (sequelize, DataTypes) => {
     address: {
       type: DataTypes.STRING,
       allowNull: true
+    },
+    resetToken: {
+      type: DataTypes.STRING
+    },
+    resetTokenExpiry: {
+      type: DataTypes.DATE
     }
   });
 

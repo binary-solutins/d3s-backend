@@ -722,11 +722,12 @@ exports.assignReportToDoctor = async (req, res) => {
 
     // Send Notification to Doctor (Database)
     try {
+      const patientName = `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'a patient';
       const newNotification = await Notification.create({
         userId: doctor.id,
         userType: 'doctor',
         title: 'New Report Assigned',
-        message: `A new report "${report.title}" has been assigned to you for review.`,
+        message: `A new report "${report.title}" for patient ${patientName} has been assigned to you.`,
         type: 'REPORT_ASSIGNED',
         relatedId: report.id
       });

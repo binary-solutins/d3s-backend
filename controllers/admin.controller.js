@@ -204,12 +204,12 @@ exports.getAllHospitals = async (req, res) => {
 exports.updateHospitalStatus = async (req, res) => {
   try {
     const { hospitalId } = req.params;
-    const { isVerified, plan_time } = req.body;
+    const { isVerified, plan_time, report_limit } = req.body;
     
     const hospital = await Hospital.findByPk(hospitalId);
     if (!hospital) return res.status(404).json({ error: 'Hospital not found' });
 
-    await hospital.update({ isVerified, plan_time });
+    await hospital.update({ isVerified, plan_time, report_limit });
     res.json({ message: 'Hospital updated successfully', hospital });
   } catch (error) {
     res.status(500).json({ error: error.message });

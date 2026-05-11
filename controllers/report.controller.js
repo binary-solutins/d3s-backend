@@ -192,6 +192,18 @@ exports.uploadReportFileMiddleware = (req, res, next) => {
 exports.createBreastCancerReport = async (req, res) => {
   try {
     const { patientId, doctorId, hospitalId, title, description } = req.body;
+
+    // Check Report Limit
+    const hospitalForLimit = await Hospital.findByPk(hospitalId);
+    if (hospitalForLimit && hospitalForLimit.report_limit !== null) {
+      const currentReportCount = await Report.count({ where: { hospitalId, isDeleted: false } });
+      if (currentReportCount >= hospitalForLimit.report_limit) {
+        return res.status(403).json({ 
+          error: `❌ Report limit reached (${hospitalForLimit.report_limit}). Please contact admin to upgrade your plan.` 
+        });
+      }
+    }
+
     console.log('DEBUG: createBreastCancerReport - Incoming request body:', { patientId, doctorId, hospitalId, title, description });
     console.log('DEBUG: createBreastCancerReport - Received files:', req.files ? Object.keys(req.files) : 'No files');
 
@@ -433,6 +445,18 @@ exports.createReport = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: '❌ No report file uploaded' });
     }
+
+    // Check Report Limit
+    const hospitalForLimit = await Hospital.findByPk(hospitalId);
+    if (hospitalForLimit && hospitalForLimit.report_limit !== null) {
+      const currentReportCount = await Report.count({ where: { hospitalId, isDeleted: false } });
+      if (currentReportCount >= hospitalForLimit.report_limit) {
+        return res.status(403).json({ 
+          error: `❌ Report limit reached (${hospitalForLimit.report_limit}). Please contact admin to upgrade your plan.` 
+        });
+      }
+    }
+
     
     // Upload file to Azure Blob Storage
     const fileData = await uploadToAzureBlob(req.file, patientId, 'general_report');

@@ -20,6 +20,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: true
     },
+    report_limit: {
+      type: DataTypes.INTEGER,
+      defaultValue: null, // NULL means unlimited
+      allowNull: true
+    },
     isVerified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false

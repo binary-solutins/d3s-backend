@@ -81,6 +81,7 @@ app.use('/api/orders', require('./routes/order.route'));
 app.use('/api/analytics', require('./routes/analytics.route'));
 app.use('/api/appointments', require('./routes/appointment.route'));
 app.use('/api/offline', require('./routes/offlineSync.route'));
+app.use('/api/notifications', require('./routes/notification.route'));
 // 📚 Swagger UI
 app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 

@@ -14,6 +14,8 @@ const { v4: uuidv4 } = require('uuid');
 const archiver = require('archiver');
 const { PDFDocument: PDFLibDocument } = require('pdf-lib');
 const axios = require('axios');
+const sendEmail = require('../utils/emainSender');
+const Notification = db.Notification;
 
 // Azure Blob Storage imports
 const { BlobServiceClient } = require('@azure/storage-blob');
@@ -712,6 +714,45 @@ exports.assignReportToDoctor = async (req, res) => {
       assignedDoctorId: assignedDoctorId,
       assignedAt: new Date()
     });
+
+    // Send Notification to Doctor (Database)
+    try {
+      await Notification.create({
+        userId: doctor.id,
+        userType: 'doctor',
+        title: 'New Report Assigned',
+        message: `A new report "${report.title}" has been assigned to you for review.`,
+        type: 'REPORT_ASSIGNED',
+        relatedId: report.id
+      });
+    } catch (notifError) {
+      console.error('Failed to create notification:', notifError);
+    }
+
+    // Send Email to Doctor
+    if (doctor.email) {
+      try {
+        const emailHtml = `
+          <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #16a34a;">New Report Assigned</h2>
+            <p>Hello <strong>Dr. ${doctor.name}</strong>,</p>
+            <p>A new report has been assigned to you for review in the D3S Doctor Portal.</p>
+            <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 5px 0;"><strong>Report Title:</strong> ${report.title}</p>
+              <p style="margin: 5px 0;"><strong>Patient:</strong> ${report.patient?.firstName || ''} ${report.patient?.lastName || ''}</p>
+              <p style="margin: 5px 0;"><strong>Hospital:</strong> ${hospital?.name || ''}</p>
+            </div>
+            <p>Please log in to your dashboard to review and annotate the report.</p>
+            <a href="https://doctor.d3shealthcare.com/assigned-reports" style="display: inline-block; padding: 12px 24px; background: #16a34a; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">View Report</a>
+            <p style="margin-top: 30px; font-size: 12px; color: #666;">This is an automated notification. Please do not reply to this email.</p>
+          </div>
+        `;
+        await sendEmail(doctor.email, 'D3S HealthCare - New Report Assigned', null, emailHtml);
+        console.log(`✅ Assignment email sent to: ${doctor.email}`);
+      } catch (emailError) {
+        console.error('Failed to send assignment email:', emailError);
+      }
+    }
 
     res.status(200).json({
       message: '✅ Report assigned to doctor successfully',
@@ -1422,16 +1463,24 @@ exports.annotateReport = async (req, res) => {
       }
 
       const page = pdfDoc.getPage(pageIndex);
-      const { width, height } = page.getSize();
+      const { width: pageWidth, height: pageHeight } = page.getSize();
 
+      // Ensure the overlay is drawn with high fidelity
+      // We map the image to fill the page, but pdf-lib will preserve the image's internal resolution
       page.drawImage(png, {
         x: 0,
         y: 0,
-        width,
-        height
+        width: pageWidth,
+        height: pageHeight,
+        opacity: 1
       });
 
-      const finalPdf = await pdfDoc.save();
+      // Save with high-quality settings
+      const finalPdf = await pdfDoc.save({
+        useObjectStreams: false,
+        addDefaultFont: false,
+        updateMetadata: true
+      });
       annotatedPdfBuffer = Buffer.from(finalPdf);
     } catch (error) {
       console.error('Error merging PDF with overlay:', error);

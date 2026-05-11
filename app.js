@@ -8,6 +8,8 @@ const swaggerUI = require('swagger-ui-express');
 const initializeOrderCounter = require('./scripts/initOrderCounter');
 require('./services/cron');
 require('dotenv').config();
+const http = require('http');
+const { initSocket } = require('./utils/socket');
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -117,7 +119,12 @@ db.sequelize.sync({ alter: false })
 
 // 🚀 Start Server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
+const server = http.createServer(app);
+
+// Initialize Socket.io
+initSocket(server);
+
+server.listen(PORT, async () => {
   await initializeOrderCounter();
   console.log(`🟢 Server running at: http://localhost:${PORT}`);
 });

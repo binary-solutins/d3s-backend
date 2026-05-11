@@ -15,6 +15,7 @@ const archiver = require('archiver');
 const { PDFDocument: PDFLibDocument } = require('pdf-lib');
 const axios = require('axios');
 const sendEmail = require('../utils/emainSender');
+const { sendRealTimeNotification } = require('../utils/socket');
 const Notification = db.Notification;
 
 // Azure Blob Storage imports
@@ -721,7 +722,7 @@ exports.assignReportToDoctor = async (req, res) => {
 
     // Send Notification to Doctor (Database)
     try {
-      await Notification.create({
+      const newNotification = await Notification.create({
         userId: doctor.id,
         userType: 'doctor',
         title: 'New Report Assigned',
@@ -729,6 +730,9 @@ exports.assignReportToDoctor = async (req, res) => {
         type: 'REPORT_ASSIGNED',
         relatedId: report.id
       });
+
+      // Send Real-time socket notification
+      sendRealTimeNotification(doctor.id, 'doctor', newNotification);
     } catch (notifError) {
       console.error('Failed to create notification:', notifError);
     }

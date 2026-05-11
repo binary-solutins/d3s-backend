@@ -709,6 +709,10 @@ exports.assignReportToDoctor = async (req, res) => {
       return res.status(404).json({ error: '❌ Doctor not found or not active in this hospital' });
     }
 
+    // Fetch hospital and patient details for the email
+    const hospital = await Hospital.findByPk(report.hospitalId);
+    const patient = await Patient.findByPk(report.patientId);
+
     // Assign report to doctor
     await report.update({
       assignedDoctorId: assignedDoctorId,
@@ -739,7 +743,7 @@ exports.assignReportToDoctor = async (req, res) => {
             <p>A new report has been assigned to you for review in the D3S Doctor Portal.</p>
             <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin: 20px 0;">
               <p style="margin: 5px 0;"><strong>Report Title:</strong> ${report.title}</p>
-              <p style="margin: 5px 0;"><strong>Patient:</strong> ${report.patient?.firstName || ''} ${report.patient?.lastName || ''}</p>
+              <p style="margin: 5px 0;"><strong>Patient:</strong> ${patient?.firstName || ''} ${patient?.lastName || ''}</p>
               <p style="margin: 5px 0;"><strong>Hospital:</strong> ${hospital?.name || ''}</p>
             </div>
             <p>Please log in to your dashboard to review and annotate the report.</p>

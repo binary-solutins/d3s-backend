@@ -6,13 +6,19 @@ exports.getAdminDashboard = async (req, res) => {
   try {
     // Check if user is hospital or admin
     const isHospital = req.role === 'hospital';
-    const hospitalId = req.hospitalId;
+    const isAdmin = req.role === 'admin';
+    const queryHospitalId = req.query.hospitalId;
     
-    // Build where clauses based on role
-    const hospitalWhere = isHospital ? { id: hospitalId } : {};
-    const patientWhere = isHospital ? { hospitalId } : {};
-    const reportWhere = isHospital ? { hospitalId, isDeleted: false } : { isDeleted: false };
-    const doctorWhere = isHospital ? { hospitalId } : {};
+    // Determine effective hospital ID for filtering
+    // If hospital role: always use their own ID
+    // If admin role: use query ID if provided, otherwise null (show all)
+    const effectiveHospitalId = isHospital ? req.hospitalId : (isAdmin && queryHospitalId ? queryHospitalId : null);
+    
+    // Build where clauses
+    const hospitalWhere = effectiveHospitalId ? { id: effectiveHospitalId } : {};
+    const patientWhere = effectiveHospitalId ? { hospitalId: effectiveHospitalId } : {};
+    const reportWhere = effectiveHospitalId ? { hospitalId: effectiveHospitalId, isDeleted: false } : { isDeleted: false };
+    const doctorWhere = effectiveHospitalId ? { hospitalId: effectiveHospitalId } : {};
 
     const [
       totalHospitals,
@@ -21,11 +27,11 @@ exports.getAdminDashboard = async (req, res) => {
       totalDoctors,
       verifiedHospitals
     ] = await Promise.all([
-      isHospital ? Promise.resolve(1) : db.Hospital.count(),
+      effectiveHospitalId ? Promise.resolve(1) : db.Hospital.count(),
       db.Patient.count({ where: patientWhere }),
       db.Report.count({ where: reportWhere }),
       db.Doctor.count({ where: doctorWhere }),
-      isHospital ? Promise.resolve(0) : db.Hospital.count({ 
+      effectiveHospitalId ? db.Hospital.count({ where: { id: effectiveHospitalId, isVerified: true } }) : db.Hospital.count({ 
         where: { isVerified: true }
       })
     ]);
@@ -33,7 +39,7 @@ exports.getAdminDashboard = async (req, res) => {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    const hospitalGrowth = isHospital ? [] : await db.Hospital.findAll({
+    const hospitalGrowth = effectiveHospitalId ? [] : await db.Hospital.findAll({
       attributes: [
         [Sequelize.fn('YEAR', Sequelize.col('createdAt')), 'year'],
         [Sequelize.fn('MONTH', Sequelize.col('createdAt')), 'month'],

@@ -1044,7 +1044,7 @@ function getReportTemplate() {
 
           <footer class="footer">
               <div class="disclaimer">
-                  <span class="disclaimer-title">Disclaimer:</span> This breast health screening device is intended for preliminary assessment only and does not diagnose any disease. Findings are based on visual observations from captured images and may vary due to image quality, positioning, or over time. This report is not a substitute for clinical examination or diagnostic investigations such as mammography, ultrasound, or biopsy. Final interpretation and medical decisions must be made by a registered medical practitioner.
+                  <span class="disclaimer-title">Disclaimer:</span> This breast health screening report is generated using non-invasive BR Scan Device with image-based visual reporting and is intended for breast health screening purposes only. Results may be affected by image quality, positioning, and capture conditions. This report does not constitute a diagnosis and does not replace professional medical advice, clinical evaluation, or treatment. Findings are indicative and may change over time. Users are strongly advised to seek evaluation and confirmatory tests (such as mammography or ultrasound) from a qualified healthcare professional. D3S Healthcare shall not be liable for any decisions made without appropriate medical consultation.
               </div>
               <div class="powered-by">
                   <span>Powered By</span>
@@ -1215,7 +1215,7 @@ function getReportTemplate() {
 
           <footer class="footer">
               <div class="disclaimer">
-                  <span class="disclaimer-title">Disclaimer:</span> This breast health screening device is intended for preliminary assessment only and does not diagnose any disease. Findings are based on visual observations from captured images and may vary due to image quality, positioning, or over time. This report is not a substitute for clinical examination or diagnostic investigations such as mammography, ultrasound, or biopsy. Final interpretation and medical decisions must be made by a registered medical practitioner.
+                  <span class="disclaimer-title">Disclaimer:</span> This breast health screening report is generated using non-invasive BR Scan Device with image-based visual reporting and is intended for breast health screening purposes only. Results may be affected by image quality, positioning, and capture conditions. This report does not constitute a diagnosis and does not replace professional medical advice, clinical evaluation, or treatment. Findings are indicative and may change over time. Users are strongly advised to seek evaluation and confirmatory tests (such as mammography or ultrasound) from a qualified healthcare professional. D3S Healthcare shall not be liable for any decisions made without appropriate medical consultation.
               </div>
               <div class="powered-by">
                   <span>Powered By</span>
